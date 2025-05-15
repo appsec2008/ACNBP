@@ -11,10 +11,15 @@ const availableServices: AgentService[] = [
   { id: "svc2", name: "TextSummarizerAI", capability: "Text Summarization", description: "Advanced NLP for summarizing long documents, multiple languages.", qos: 0.90, cost: 75, protocol: "ACNBP-NLP/1.2" },
   { id: "svc3", name: "DataCruncher Bot", capability: "Data Processing", description: "Scalable data processing and analytics, batch and stream modes.", qos: 0.88, cost: 120, protocol: "ACNBP-Data/1.0" },
   { id: "svc4", name: "SecureStorageAgent", capability: "Secure Storage", description: "Encrypted and resilient data storage solution with audit trails.", qos: 0.99, cost: 50, protocol: "ACNBP-SecureStore/1.1" },
-  { id: "svc5", name: "ImageAnalysisBasic", capability: "Image Recognition", description: "Basic image recognition service for general purposes, limited formats.", qos: 0.80, cost: 40, protocol: "ACNBP-Vision/1.0" },
+  { id: "svc5", name: "ImageAnalysisBasic", capability: "Image Recognition Basic", description: "Basic image recognition service for general purposes, limited formats.", qos: 0.80, cost: 40, protocol: "ACNBP-Vision/1.0" },
   { id: "svc6", name: "TranslationService", capability: "Language Translation", description: "Real-time translation for multiple language pairs.", qos: 0.92, cost: 60, protocol: "ACNBP-NLP/1.2" },
-  { id: "svc7", name: "TimeSeriesDB", capability: "Data Storage", description: "Optimized storage for time-series data with querying capabilities.", qos: 0.97, cost: 90, protocol: "ACNBP-Data/1.0" },
+  { id: "svc7", name: "TimeSeriesDB", capability: "Data Storage Time Series", description: "Optimized storage for time-series data with querying capabilities.", qos: 0.97, cost: 90, protocol: "ACNBP-Data/1.0" },
+  { id: "svc8", name: "Image Resolution Enhancer", capability: "Image Resolution Upscaling", description: "Upscales image resolution using AI.", qos: 0.85, cost: 150, protocol: "ACNBP-Vision/1.1" },
 ];
+
+function normalizeCapability(capability: string): string {
+  return capability.toLowerCase().replace(/\s+/g, '');
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,42 +29,86 @@ export async function POST(request: NextRequest) {
     const negotiationResults: NegotiationResult[] = [];
     const offersForAI: EvaluateOffersInput['capabilityOffers'] = [];
 
-    const desiredCapLower = desiredCapability.toLowerCase();
+    const normalizedDesiredCapability = desiredCapability ? normalizeCapability(desiredCapability) : "";
+    const isQoSIgnored = requiredQos <= 0.01; // Epsilon for float comparison
+    const isCostIgnored = maxCost >= 999999; // A large number indicates cost is not a concern
 
     availableServices.forEach(service => {
-      let matchStatus: NegotiationResult['matchStatus'] = 'failed';
-      let matchMessage = "";
+      let serviceMatchStatus: NegotiationResult['matchStatus'] = 'failed'; // Default to failed
+      const messages: string[] = [];
       let qualifiesForAI = false;
+      let capabilityMatched = false;
 
-      const serviceCapLower = service.capability.toLowerCase();
-
-      if (!desiredCapability || serviceCapLower.includes(desiredCapLower) || desiredCapLower.includes(serviceCapLower)) {
-        if (service.qos >= requiredQos && service.cost <= maxCost) {
-          matchStatus = 'success';
-          matchMessage = `Successfully meets QoS/Cost criteria. Offering ${service.capability}.`;
-          qualifiesForAI = true;
-        } else if (service.qos >= requiredQos * 0.8 && service.cost <= maxCost * 1.2) {
-          matchStatus = 'partial';
-          matchMessage = `Partially meets QoS/Cost criteria. Offering ${service.capability}. Consider adjusting requirements.`;
-          qualifiesForAI = true; // Still consider for AI evaluation if security is a factor
-        } else {
-          matchStatus = 'failed';
-          matchMessage = `Does not meet QoS/Cost criteria for ${service.capability}.`;
-        }
+      // 1. Capability Check (Fuzzy & Optional)
+      if (!normalizedDesiredCapability) {
+        capabilityMatched = true; // No specific capability desired, so all services pass this check
       } else {
-        matchStatus = 'capability_mismatch';
-        matchMessage = `Capability mismatch. Agent offers ${service.capability}, desired: ${desiredCapability || 'any'}.`;
+        const normalizedServiceCapability = normalizeCapability(service.capability);
+        if (normalizedServiceCapability.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(normalizedServiceCapability)) {
+          capabilityMatched = true;
+          messages.push("Capability matched.");
+        }
+      }
+
+      if (!capabilityMatched) {
+        serviceMatchStatus = 'capability_mismatch';
+        messages.push(`Capability mismatch. Agent offers '${service.capability}', desired: '${desiredCapability}'.`);
+      } else {
+        // 2. QoS Check
+        let qosCheckResult = 'met'; // met, partially_met, not_met
+        if (!isQoSIgnored) {
+          if (service.qos >= requiredQos) {
+            messages.push(`Meets QoS requirement (${service.qos.toFixed(2)} >= ${requiredQos.toFixed(2)}).`);
+          } else if (service.qos >= requiredQos * 0.8) {
+            messages.push(`Partially meets QoS (${service.qos.toFixed(2)} vs ${requiredQos.toFixed(2)}).`);
+            qosCheckResult = 'partially_met';
+          } else {
+            messages.push(`Does not meet QoS requirement (${service.qos.toFixed(2)} < ${requiredQos.toFixed(2)}).`);
+            qosCheckResult = 'not_met';
+          }
+        } else {
+          messages.push("QoS requirement not specified or ignored.");
+        }
+
+        // 3. Cost Check
+        let costCheckResult = 'met'; // met, partially_met, not_met
+        if (!isCostIgnored) {
+          if (service.cost <= maxCost) {
+            messages.push(`Within cost limit ($${service.cost} <= $${maxCost}).`);
+          } else if (service.cost <= maxCost * 1.2) {
+            messages.push(`Slightly exceeds cost limit ($${service.cost} vs $${maxCost}).`);
+            costCheckResult = 'partially_met';
+          } else {
+            messages.push(`Exceeds cost limit ($${service.cost} > $${maxCost}).`);
+            costCheckResult = 'not_met';
+          }
+        } else {
+           messages.push("Maximum cost not specified or set very high.");
+        }
+        
+        // 4. Determine overall match status
+        if (qosCheckResult === 'not_met' || costCheckResult === 'not_met') {
+          serviceMatchStatus = 'failed';
+        } else if (qosCheckResult === 'partially_met' || costCheckResult === 'partially_met') {
+          serviceMatchStatus = 'partial';
+          qualifiesForAI = true; // Partial matches can still be evaluated by AI
+        } else { // All met or ignored
+          serviceMatchStatus = 'success';
+          qualifiesForAI = true;
+        }
       }
       
       negotiationResults.push({
         service,
-        matchStatus,
-        matchMessage,
+        matchStatus: serviceMatchStatus,
+        matchMessage: messages.join(' '),
       });
       
-      if (qualifiesForAI) {
-        offersForAI.push({
-          id: service.id, // Use existing service ID
+      // Only add to AI evaluation if capability matches (or not specified)
+      // and it's not a hard fail on specified QoS/Cost
+      if (capabilityMatched && serviceMatchStatus !== 'failed') {
+         offersForAI.push({
+          id: service.id,
           description: service.description,
           cost: service.cost,
           qos: service.qos,
@@ -68,22 +117,28 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    // Filter out results that are a capability mismatch IF a capability was specified
-    // and only keep those that at least partially or fully matched criteria or if no capability was specified initially.
-    // The offersForAI list already contains only the relevant candidates for AI.
+    // Filter out results that are a capability mismatch IF a capability was specified.
+    // offersForAI already considers this.
     const finalFilteredResults = negotiationResults.filter(result => 
-        desiredCapability ? result.matchStatus !== 'capability_mismatch' : true
+        normalizedDesiredCapability ? result.matchStatus !== 'capability_mismatch' : true
     );
-
 
     let aiEvaluationStatus: NegotiationApiResponse['aiEvaluationStatus'] = 'not_attempted';
     let aiEvaluationMessage: NegotiationApiResponse['aiEvaluationMessage'] = undefined;
 
     if (securityRequirements && securityRequirements.trim() !== "") {
-      if (offersForAI.length > 0) {
+      const candidatesForAIProcessing = offersForAI.filter(offer => {
+        // Ensure this offer is actually in finalFilteredResults (i.e., not 'capability_mismatch' if DC was specified)
+        // and wasn't a hard fail on QoS/Cost if those were specified.
+        const correspondingResult = finalFilteredResults.find(r => r.service.id === offer.id);
+        return correspondingResult && correspondingResult.matchStatus !== 'failed' && correspondingResult.matchStatus !== 'capability_mismatch';
+      });
+
+
+      if (candidatesForAIProcessing.length > 0) {
         try {
           const aiInput: EvaluateOffersInput = {
-            capabilityOffers: offersForAI,
+            capabilityOffers: candidatesForAIProcessing,
             securityRequirements: securityRequirements,
           };
           const aiEvaluations: EvaluateOffersOutput = await evaluateOffers(aiInput);
@@ -97,27 +152,37 @@ export async function POST(request: NextRequest) {
             }
           });
           aiEvaluationStatus = 'success';
-          aiEvaluationMessage = 'AI evaluation completed successfully.';
+          aiEvaluationMessage = 'AI evaluation completed successfully for relevant offers.';
         } catch (error) {
           console.error("API - AI Offer evaluation error:", error);
           aiEvaluationStatus = 'failed';
-          aiEvaluationMessage = "An error occurred during AI evaluation. Results shown without AI scores.";
+          aiEvaluationMessage = "An error occurred during AI evaluation. Results shown without AI scores for some/all offers.";
         }
-      } else {
+      } else if (offersForAI.length > 0 && candidatesForAIProcessing.length === 0) {
+        // This case means there were initial candidates, but none survived post-filtering for AI.
         aiEvaluationStatus = 'skipped_no_candidates';
-        aiEvaluationMessage = "AI evaluation skipped: No suitable candidate offers after initial filtering.";
+        aiEvaluationMessage = "AI evaluation skipped: No suitable candidates after initial filtering met AI evaluation criteria.";
+      } 
+       else { // offersForAI.length === 0
+        aiEvaluationStatus = 'skipped_no_candidates';
+        aiEvaluationMessage = "AI evaluation skipped: No offers met the basic criteria to be considered for AI evaluation.";
       }
     } else {
       aiEvaluationStatus = 'skipped_no_requirements';
       aiEvaluationMessage = "AI evaluation skipped: No security requirements provided.";
     }
 
-    if (finalFilteredResults.length === 0 && desiredCapability) {
-         // Add a system message if no agents found after filtering.
-        finalFilteredResults.push({
-            service: {id: "system", name: "System", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A"},
+    if (finalFilteredResults.length === 0 && normalizedDesiredCapability) {
+         finalFilteredResults.push({ // Use finalFilteredResults to add this message
+            service: {id: "system", name: "System Message", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A"},
+            matchStatus: 'failed', // or a more specific status like 'no_match'
+            matchMessage: "No agents found matching the desired capability and other criteria after filtering."
+        });
+    } else if (finalFilteredResults.length === 0 && !normalizedDesiredCapability) {
+         finalFilteredResults.push({
+            service: {id: "system", name: "System Message", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A"},
             matchStatus: 'failed',
-            matchMessage: "No agents found matching the desired capability and criteria after filtering."
+            matchMessage: "No agents available in the system or none matched unspecified criteria."
         });
     }
 
@@ -144,3 +209,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorResponse, { status: 500 });
   }
 }
+
