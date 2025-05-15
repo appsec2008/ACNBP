@@ -12,7 +12,7 @@ const features = [
     description: "Demonstrate the process of agents negotiating capabilities based on requirements and offers.",
     icon: BotMessageSquare,
     href: "/capability-negotiation",
-    img: "https://placehold.co/500x350.png", // Updated dimension
+    img: "https://placehold.co/500x280.png", 
     imgHint: "discussion gears" 
   },
   {
@@ -20,7 +20,7 @@ const features = [
     description: "A directory for registering and discovering agents, their capabilities, and protocol support.",
     icon: ListTree,
     href: "/agent-directory",
-    img: "https://placehold.co/550x380.png", // Updated dimension
+    img: "https://placehold.co/500x280.png",
     imgHint: "network nodes"
   },
   {
@@ -28,7 +28,7 @@ const features = [
     description: "Explore the mechanisms for establishing secure and trusted bindings between agents.",
     icon: ShieldCheck,
     href: "/secure-binding",
-    img: "https://placehold.co/520x360.png", // Updated dimension
+    img: "https://placehold.co/500x280.png",
     imgHint: "padlock connection"
   },
   {
@@ -36,7 +36,7 @@ const features = [
     description: "Utilize AI to evaluate capability offers based on multiple criteria like cost, QoS, and security.",
     icon: BrainCircuit,
     href: "/offer-evaluation",
-    img: "https://placehold.co/580x390.png", // Updated dimension
+    img: "https://placehold.co/500x280.png",
     imgHint: "ai analysis"
   },
 ];
@@ -54,7 +54,7 @@ export default function DashboardPage() {
         {features.map((feature) => (
           <Card key={feature.title} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardHeader className="p-0">
-               <Image src={feature.img} alt={feature.title} width={600} height={300} className="w-full h-48 object-cover" data-ai-hint={feature.imgHint} />
+               <Image src={feature.img} alt={feature.title} width={500} height={280} className="w-full h-48 object-cover" data-ai-hint={feature.imgHint} />
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex items-center mb-3">
@@ -87,4 +87,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
