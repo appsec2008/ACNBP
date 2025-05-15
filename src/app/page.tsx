@@ -3,19 +3,16 @@
 
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card"; // Added CardHeader
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LayoutDashboard, BotMessageSquare, ListTree, ShieldCheck, BrainCircuit, ExternalLink } from "lucide-react";
-import Image from "next/image";
 
 interface Feature {
   title: string;
   description: string;
   icon: LucideIcon;
   href: string;
-  imgHint: string;
-  placeholderImg: string;
 }
 
 const initialFeaturesData: Feature[] = [
@@ -24,32 +21,24 @@ const initialFeaturesData: Feature[] = [
     description: "Demonstrate the process of agents negotiating capabilities based on requirements and offers.",
     icon: BotMessageSquare,
     href: "/capability-negotiation",
-    placeholderImg: "https://placehold.co/500x280.png?text=",
-    imgHint: "discussion gears negotiation"
   },
   {
     title: "Agent Directory Service",
     description: "A directory for registering and discovering agents, their capabilities, and protocol support.",
     icon: ListTree,
     href: "/agent-directory",
-    placeholderImg: "https://placehold.co/500x280.png?text=",
-    imgHint: "network nodes directory"
   },
   {
     title: "Secure Binding Protocol",
     description: "Explore the mechanisms for establishing secure and trusted bindings between agents.",
     icon: ShieldCheck,
     href: "/secure-binding",
-    placeholderImg: "https://placehold.co/500x280.png?text=",
-    imgHint: "padlock connection security"
   },
   {
     title: "AI-Powered Offer Evaluation",
     description: "Utilize AI to evaluate capability offers based on multiple criteria like cost, QoS, and security.",
     icon: BrainCircuit,
     href: "/offer-evaluation",
-    placeholderImg: "https://placehold.co/500x280.png?text=",
-    imgHint: "ai analysis evaluation"
   },
 ];
 
@@ -63,19 +52,8 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-        {initialFeaturesData.map((feature, index) => (
-          <Card key={feature.title} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
-            <CardHeader className="p-0 relative h-48">
-              <Image
-                src={feature.placeholderImg}
-                alt={feature.title}
-                width={500}
-                height={280}
-                className="w-full h-full object-cover"
-                data-ai-hint={feature.imgHint}
-                priority={index < 2}
-              />
-            </CardHeader>
+        {initialFeaturesData.map((feature) => (
+          <Card key={feature.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
             <CardContent className="p-6 flex-grow flex flex-col">
               <div className="flex items-center mb-3">
                 <feature.icon className="h-7 w-7 text-primary mr-3" />
@@ -96,7 +74,7 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle>About ACNBP</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0"> {/* Adjusted padding top for CardContent after CardHeader */}
           <p className="text-muted-foreground">
             The Agent Capability Negotiation and Binding Protocol (ACNBP) provides a standardized framework
             for dynamic interaction and collaboration in multi-agent systems. This platform offers tools to understand and implement
