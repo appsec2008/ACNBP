@@ -1,3 +1,4 @@
+
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ const features = [
     description: "Demonstrate the process of agents negotiating capabilities based on requirements and offers.",
     icon: BotMessageSquare,
     href: "/capability-negotiation",
-    img: "https://placehold.co/600x400.png",
+    img: "https://placehold.co/500x350.png", // Updated dimension
     imgHint: "discussion gears" 
   },
   {
@@ -19,7 +20,7 @@ const features = [
     description: "A directory for registering and discovering agents, their capabilities, and protocol support.",
     icon: ListTree,
     href: "/agent-directory",
-    img: "https://placehold.co/600x400.png",
+    img: "https://placehold.co/550x380.png", // Updated dimension
     imgHint: "network nodes"
   },
   {
@@ -27,7 +28,7 @@ const features = [
     description: "Explore the mechanisms for establishing secure and trusted bindings between agents.",
     icon: ShieldCheck,
     href: "/secure-binding",
-    img: "https://placehold.co/600x400.png",
+    img: "https://placehold.co/520x360.png", // Updated dimension
     imgHint: "padlock connection"
   },
   {
@@ -35,7 +36,7 @@ const features = [
     description: "Utilize AI to evaluate capability offers based on multiple criteria like cost, QoS, and security.",
     icon: BrainCircuit,
     href: "/offer-evaluation",
-    img: "https://placehold.co/600x400.png",
+    img: "https://placehold.co/580x390.png", // Updated dimension
     imgHint: "ai analysis"
   },
 ];
@@ -86,3 +87,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
