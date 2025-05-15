@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { BotMessageSquare, Send, CheckCircle, XCircle, Search, ShieldQuestion, Star, FileText, Loader2 } from "lucide-react";
+import { BotMessageSquare, Send, CheckCircle, XCircle, Search, ShieldQuestion, Star, FileText, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,40 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { evaluateOffers } from "@/ai/flows/evaluate-offers-flow";
-import type { EvaluateOffersInput, EvaluateOffersOutput } from "@/ai/flows/evaluate-offers-flow";
-
-interface AvailableAgentService {
-  id: string;
-  name: string;
-  capability: string;
-  description: string;
-  qos: number; // 0-1
-  cost: number;
-  protocol: string;
-}
-
-const availableServices: AvailableAgentService[] = [
-  { id: "svc1", name: "ImageAnalysisPro", capability: "Image Recognition", description: "High-accuracy image recognition and tagging, supports various formats.", qos: 0.95, cost: 100, protocol: "ACNBP-Vision/1.0" },
-  { id: "svc2", name: "TextSummarizerAI", capability: "Text Summarization", description: "Advanced NLP for summarizing long documents, multiple languages.", qos: 0.90, cost: 75, protocol: "ACNBP-NLP/1.2" },
-  { id: "svc3", name: "DataCruncher Bot", capability: "Data Processing", description: "Scalable data processing and analytics, batch and stream modes.", qos: 0.88, cost: 120, protocol: "ACNBP-Data/1.0" },
-  { id: "svc4", name: "SecureStorageAgent", capability: "Secure Storage", description: "Encrypted and resilient data storage solution with audit trails.", qos: 0.99, cost: 50, protocol: "ACNBP-SecureStore/1.1" },
-  { id: "svc5", name: "ImageAnalysisBasic", capability: "Image Recognition", description: "Basic image recognition service for general purposes, limited formats.", qos: 0.80, cost: 40, protocol: "ACNBP-Vision/1.0" },
-];
-
-interface NegotiationResult {
-  agent: AvailableAgentService;
-  message: string;
-  status: 'success' | 'partial' | 'failed';
-  aiScore?: number;
-  aiReasoning?: string;
-}
+import type { NegotiationResult, NegotiationRequestInput, NegotiationApiResponse } from "@/lib/types";
 
 export default function CapabilityNegotiationPage() {
   const [desiredCapability, setDesiredCapability] = useState("");
   const [requiredQos, setRequiredQos] = useState(0.7);
   const [maxCost, setMaxCost] = useState(100);
   const [securityRequirements, setSecurityRequirements] = useState("");
+  
   const [negotiationResults, setNegotiationResults] = useState<NegotiationResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -54,130 +28,74 @@ export default function CapabilityNegotiationPage() {
     setIsLoading(true);
     setNegotiationResults([]);
 
-    const localResults: NegotiationResult[] = [];
-    const capabilityLower = desiredCapability.toLowerCase();
-    const offersForAI: EvaluateOffersInput['capabilityOffers'] = [];
-    const serviceForAIMap = new Map<string, AvailableAgentService>();
+    const requestPayload: NegotiationRequestInput = {
+      desiredCapability,
+      requiredQos,
+      maxCost,
+      securityRequirements,
+    };
 
-    availableServices.forEach(agent => {
-      const agentCapabilityLower = agent.capability.toLowerCase();
-      let status: 'success' | 'partial' | 'failed' = 'failed';
-      let message = "";
-      let meetsBasicCriteria = false;
-
-      if (!desiredCapability || agentCapabilityLower.includes(capabilityLower) || capabilityLower.includes(agentCapabilityLower)) {
-        if (agent.qos >= requiredQos && agent.cost <= maxCost) {
-          status = 'success';
-          message = `Successfully meets QoS/Cost criteria. Offering ${agent.capability}.`;
-          meetsBasicCriteria = true;
-        } else if (agent.qos >= requiredQos * 0.8 && agent.cost <= maxCost * 1.2) {
-          status = 'partial';
-          message = `Partially meets QoS/Cost criteria. Offering ${agent.capability}. Consider adjusting requirements.`;
-          meetsBasicCriteria = true;
-        } else {
-          message = `Does not meet QoS/Cost criteria for ${agent.capability}.`;
-          status = 'failed';
-        }
-      } else {
-        message = `Capability mismatch. Agent offers ${agent.capability}.`;
-        status = 'failed';
-      }
-      
-      // Only add to localResults if it's a potential match or user searched for something
-      if (status !== 'failed' || desiredCapability) {
-        localResults.push({ agent, message, status });
-        if (meetsBasicCriteria) {
-           offersForAI.push({
-            description: agent.description, // Use detailed description for AI
-            cost: agent.cost,
-            qos: agent.qos,
-            protocolCompatibility: agent.protocol,
-          });
-          serviceForAIMap.set(agent.description, agent);
-        }
-      }
-    });
-    
-    let finalResults = [...localResults];
-
-    if (offersForAI.length > 0 && securityRequirements.trim() !== "") {
-      try {
-        toast({
-          title: "AI Evaluation Started",
-          description: "Sending offers to AI for evaluation based on security requirements.",
-        });
-        const aiInput: EvaluateOffersInput = {
-          capabilityOffers: offersForAI,
-          securityRequirements: securityRequirements,
-        };
-        const aiEvaluations: EvaluateOffersOutput = await evaluateOffers(aiInput);
-
-        // Merge AI results
-        finalResults = localResults.map(localResult => {
-          const matchedService = serviceForAIMap.get(localResult.agent.description);
-          if (matchedService) {
-            const aiEval = aiEvaluations.find(
-              evalItem => evalItem.description === localResult.agent.description &&
-                          evalItem.cost === localResult.agent.cost && // ensure more precise match
-                          evalItem.qos === localResult.agent.qos
-            );
-            if (aiEval) {
-              return {
-                ...localResult,
-                aiScore: aiEval.score,
-                aiReasoning: aiEval.reasoning,
-              };
-            }
-          }
-          return localResult;
-        });
-        
-        toast({
-          title: "AI Evaluation Complete",
-          description: "Offers have been evaluated by the AI.",
-        });
-
-      } catch (error) {
-        console.error("AI Offer evaluation error:", error);
-        toast({
-          title: "AI Evaluation Failed",
-          description: "An error occurred during AI evaluation. Displaying local results.",
-          variant: "destructive",
-        });
-      }
-    } else if (offersForAI.length > 0 && securityRequirements.trim() === "") {
-        toast({
-            title: "AI Evaluation Skipped",
-            description: "Provide security requirements to enable AI-powered offer evaluation.",
-            variant: "default"
-        });
-    }
-
-    if (finalResults.length === 0 && desiredCapability) {
-      finalResults.push({
-        // @ts-ignore
-        agent: { name: "System", capability: "N/A", qos: 0, cost: 0, protocol: "N/A", description: "N/A" },
-        message: "No agents found matching the desired capability and criteria.",
-        status: 'failed'
+    try {
+      const response = await fetch('/api/negotiate-capabilities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
       });
-    }
-    
-    finalResults.sort((a, b) => {
-      if (a.status === 'success' && b.status !== 'success') return -1;
-      if (a.status !== 'success' && b.status === 'success') return 1;
-      if (a.status === 'partial' && b.status === 'failed') return -1;
-      if (a.status === 'failed' && b.status === 'partial') return 1;
-      // If status is the same, sort by AI score if available
-      if (a.aiScore !== undefined && b.aiScore !== undefined) {
-        return b.aiScore - a.aiScore;
-      }
-      if (a.aiScore !== undefined) return -1; // Ones with AI score first
-      if (b.aiScore !== undefined) return 1;
-      return 0;
-    });
 
-    setNegotiationResults(finalResults);
-    setIsLoading(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.aiEvaluationMessage || `API Error: ${response.statusText}`);
+      }
+
+      const data: NegotiationApiResponse = await response.json();
+      
+      // Sort results: success > partial > failed. Within same status, by AI score desc.
+      const sortedResults = data.results.sort((a, b) => {
+        const statusOrder = { 'success': 1, 'partial': 2, 'failed': 3, 'capability_mismatch': 4 };
+        if (statusOrder[a.matchStatus] !== statusOrder[b.matchStatus]) {
+          return statusOrder[a.matchStatus] - statusOrder[b.matchStatus];
+        }
+        // If status is the same, sort by AI score if available (higher score first)
+        if (a.aiScore !== undefined && b.aiScore !== undefined) {
+          return b.aiScore - a.aiScore;
+        }
+        if (a.aiScore !== undefined) return -1; // a has AI score, b doesn't
+        if (b.aiScore !== undefined) return 1;  // b has AI score, a doesn't
+        return 0;
+      });
+      
+      setNegotiationResults(sortedResults);
+
+      if (data.aiEvaluationMessage) {
+        toast({
+          title: "Negotiation Complete",
+          description: data.aiEvaluationMessage,
+          variant: data.aiEvaluationStatus === 'failed' ? 'destructive' : 'default',
+        });
+      } else {
+         toast({
+          title: "Negotiation Complete",
+          description: "Offers processed.",
+        });
+      }
+
+    } catch (error: any) {
+      console.error("Negotiation error:", error);
+      toast({
+        title: "Negotiation Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+       setNegotiationResults([{
+            service: {id: "system-error", name: "System Error", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A"},
+            matchStatus: 'failed',
+            matchMessage: `Negotiation process failed: ${error.message || "Unknown error"}`
+        }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -199,7 +117,7 @@ export default function CapabilityNegotiationPage() {
               <Label htmlFor="desiredCapability">Desired Capability</Label>
               <Textarea 
                 id="desiredCapability" 
-                placeholder="e.g., Image Recognition, Text Summarization" 
+                placeholder="e.g., Image Recognition, Text Summarization. Leave blank to see all." 
                 value={desiredCapability}
                 onChange={(e) => setDesiredCapability(e.target.value)}
               />
@@ -260,32 +178,32 @@ export default function CapabilityNegotiationPage() {
               </div>
             )}
             {negotiationResults.map((result, index) => (
-              <Card key={result.agent?.id || index} className="p-4 bg-card/50">
+              <Card key={result.service.id || index} className="p-4 bg-card/50">
                 <div className="flex items-start space-x-3">
-                  {result.status === 'success' && <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />}
-                  {result.status === 'partial' && <Search className="h-5 w-5 text-yellow-500 mt-1 flex-shrink-0" />}
-                  {result.status === 'failed' && result.agent?.name !== "System" && <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />}
-                  {result.status === 'failed' && result.agent?.name === "System" && <XCircle className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />}
+                  {result.matchStatus === 'success' && <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />}
+                  {result.matchStatus === 'partial' && <Search className="h-5 w-5 text-yellow-500 mt-1 flex-shrink-0" />}
+                  {(result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') && result.service.id !== "system-error" && result.service.name !== "System" && <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />}
+                  {(result.service.id === "system-error" || result.service.name === "System") && <AlertTriangle className="h-5 w-5 text-destructive mt-1 flex-shrink-0" />}
                   
                   <div className="flex-grow">
-                    <CardTitle className="text-lg mb-1">{result.agent?.name || 'System Message'}</CardTitle>
-                    {result.agent?.name !== "System" && (
+                    <CardTitle className="text-lg mb-1">{result.service.name || 'System Message'}</CardTitle>
+                    {result.service.name !== "System" && result.service.id !== "system-error" && (
                         <>
-                            <p className="text-sm text-muted-foreground">Offered Capability: <Badge variant="secondary">{result.agent.capability}</Badge></p>
-                             <p className="text-xs text-muted-foreground mt-0.5">{result.agent.description}</p>
+                            <p className="text-sm text-muted-foreground">Offered Capability: <Badge variant="secondary">{result.service.capability}</Badge></p>
+                             <p className="text-xs text-muted-foreground mt-0.5">{result.service.description}</p>
                             <div className="flex flex-wrap gap-2 mt-2 text-sm">
-                                <Badge variant="outline">QoS: {result.agent.qos.toFixed(2)}</Badge>
-                                <Badge variant="outline">Cost: ${result.agent.cost}</Badge>
-                                <Badge variant="outline">Protocol: {result.agent.protocol}</Badge>
+                                <Badge variant="outline">QoS: {result.service.qos.toFixed(2)}</Badge>
+                                <Badge variant="outline">Cost: ${result.service.cost}</Badge>
+                                <Badge variant="outline">Protocol: {result.service.protocol}</Badge>
                             </div>
                         </>
                     )}
                     <p className={`text-sm mt-2 font-medium ${
-                        result.status === 'success' ? 'text-green-700' :
-                        result.status === 'partial' ? 'text-yellow-700' :
-                        result.status === 'failed' && result.agent?.name === "System" ? 'text-muted-foreground' :
-                        'text-red-700'
-                    }`}>{result.message}</p>
+                        result.matchStatus === 'success' ? 'text-green-700' :
+                        result.matchStatus === 'partial' ? 'text-yellow-700' :
+                        (result.service.id === "system-error" || result.service.name === "System" || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
+                        'text-red-700' // Default fallback, though covered
+                    }`}>{result.matchMessage}</p>
 
                     {result.aiScore !== undefined && result.aiReasoning && (
                       <Card className="mt-3 p-3 bg-background shadow-sm border-dashed">
@@ -314,6 +232,3 @@ export default function CapabilityNegotiationPage() {
     </>
   );
 }
-
-
-    

@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -15,6 +16,7 @@ import {z} from 'genkit';
 const EvaluateOffersInputSchema = z.object({
   capabilityOffers: z.array( // Renamed from skillSetOffers
     z.object({
+      id: z.string().describe('A unique identifier for this offer.'), // Added ID
       description: z.string().describe('A description of the capability being offered.'), // Updated description
       cost: z.number().describe('The cost of the capability offer.'), // Updated description
       qos: z.number().describe('The quality of service offered (0-1).'),
@@ -27,6 +29,7 @@ export type EvaluateOffersInput = z.infer<typeof EvaluateOffersInputSchema>; // 
 
 // Renamed from EvaluatedSkillSetSchema
 const EvaluatedOfferSchema = z.object({
+  id: z.string().describe('The unique identifier of the offer being evaluated.'), // Added ID
   description: z.string().describe('A description of the capability being offered.'), // Updated description
   cost: z.number().describe('The cost of the capability offer.'), // Updated description
   qos: z.number().describe('The quality of service offered (0-1).'),
@@ -51,22 +54,23 @@ const prompt = ai.definePrompt({
   output: {schema: EvaluateOffersOutputSchema},
   prompt: `You are an expert in evaluating capability offers from agents based on cost, QoS, protocol compatibility, and security requirements.
 
-You will receive a list of capability offers and the security requirements. You will evaluate each capability offer based on how well it meets the requirements, its cost, quality of service, and protocol compatibility.
+You will receive a list of capability offers, each with a unique ID, and the security requirements. You will evaluate each capability offer based on how well it meets the requirements, its cost, quality of service, and protocol compatibility.
 
-You will output a list of evaluated capability offers, each with a score and reasoning for the score.
+You will output a list of evaluated capability offers, each with its original ID, a score (0-100), and reasoning for the score.
 
 Security Requirements: {{{securityRequirements}}}
 
 Capability Offers:
 {{#each capabilityOffers}}
+ID: {{{this.id}}}
 Description: {{{this.description}}}
 Cost: {{{this.cost}}}
 QoS: {{{this.qos}}}
 Protocol Compatibility: {{{this.protocolCompatibility}}}
 {{/each}}
 
-Output each capability offer with a score (0-100) and reasoning for the score.
-Ensure that the output is a valid JSON array of evaluated capability offers.
+Output each capability offer with its original ID, a score (0-100), and reasoning for the score.
+Ensure that the output is a valid JSON array of evaluated capability offers, including the ID for each offer.
 `,
 });
 
@@ -82,3 +86,4 @@ const evaluateOffersFlow = ai.defineFlow(
     return output!;
   }
 );
+
