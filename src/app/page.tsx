@@ -7,36 +7,36 @@ import Image from "next/image";
 
 const features = [
   {
-    title: "Agent Simulation",
-    description: "Simulate interactions of agents using A2A, MCP, and ACP protocols to handle skill set requests.",
+    title: "Capability Negotiation",
+    description: "Demonstrate the process of agents negotiating capabilities based on requirements and offers.",
     icon: BotMessageSquare,
-    href: "/agent-simulation",
+    href: "/capability-negotiation",
     img: "https://placehold.co/600x400.png",
-    imgHint: "network abstract"
+    imgHint: "discussion gears" 
   },
   {
-    title: "ANS Mock",
-    description: "A mock Agent Name Service (ANS) for agent registration and lookup with protocol extensions and timestamped records.",
+    title: "Agent Directory Service",
+    description: "A directory for registering and discovering agents, their capabilities, and protocol support.",
     icon: ListTree,
-    href: "/ans-mock",
+    href: "/agent-directory",
     img: "https://placehold.co/600x400.png",
-    imgHint: "data server"
+    imgHint: "network nodes"
   },
   {
-    title: "Security Simulation",
-    description: "Simulate secure agent discovery processes, including identity verification and trust establishment.",
+    title: "Secure Binding Protocol",
+    description: "Explore the mechanisms for establishing secure and trusted bindings between agents.",
     icon: ShieldCheck,
-    href: "/security-simulation",
+    href: "/secure-binding",
     img: "https://placehold.co/600x400.png",
-    imgHint: "security lock"
+    imgHint: "padlock connection"
   },
   {
-    title: "Intelligent Skill Evaluation",
-    description: "Leverage AI to evaluate skill set offers based on cost, QoS, protocol compatibility, and security requirements.",
+    title: "AI-Powered Offer Evaluation",
+    description: "Utilize AI to evaluate capability offers based on multiple criteria like cost, QoS, and security.",
     icon: BrainCircuit,
-    href: "/skill-evaluation",
+    href: "/offer-evaluation",
     img: "https://placehold.co/600x400.png",
-    imgHint: "artificial intelligence"
+    imgHint: "ai analysis"
   },
 ];
 
@@ -44,8 +44,8 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-2">
       <PageHeader
-        title="Welcome to AgentConnect"
-        description="Your platform for simulating and evaluating multi-agent systems, protocols, and skill sets. Explore the tools below to get started."
+        title="Agent Capability Negotiation and Binding Protocol"
+        description="Explore the core components and functionalities of the ACNBP. This platform demonstrates how agents can negotiate capabilities, register in a directory, establish secure bindings, and evaluate offers intelligently."
         icon={LayoutDashboard}
       />
 
@@ -73,13 +73,13 @@ export default function DashboardPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>About AgentConnect</CardTitle>
+          <CardTitle>About ACNBP</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            AgentConnect provides a suite of tools designed to facilitate the development and testing of multi-agent systems. 
-            From simulating complex agent interactions to evaluating skill offerings with advanced AI, 
-            our platform aims to streamline your workflow and enhance your understanding of agent dynamics.
+            The Agent Capability Negotiation and Binding Protocol (ACNBP) provides a standardized framework 
+            for dynamic interaction and collaboration in multi-agent systems. This platform offers tools to understand and implement
+            key aspects of the protocol, from initial capability negotiation to secure agent binding and intelligent offer assessment.
           </p>
         </CardContent>
       </Card>

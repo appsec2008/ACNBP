@@ -27,10 +27,10 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/agent-simulation", label: "Agent Simulation", icon: BotMessageSquare },
-  { href: "/ans-mock", label: "ANS Mock", icon: ListTree },
-  { href: "/security-simulation", label: "Security Simulation", icon: ShieldCheck },
-  { href: "/skill-evaluation", label: "Skill Evaluation", icon: BrainCircuit },
+  { href: "/capability-negotiation", label: "Capability Negotiation", icon: BotMessageSquare },
+  { href: "/agent-directory", label: "Agent Directory", icon: ListTree },
+  { href: "/secure-binding", label: "Secure Binding", icon: ShieldCheck },
+  { href: "/offer-evaluation", label: "Offer Evaluation", icon: BrainCircuit },
 ];
 
 export function AppSidebar() {
@@ -45,8 +45,8 @@ export function AppSidebar() {
               <NetworkIcon className="h-6 w-6 text-primary" />
             </Link>
           </Button>
-          <h1 className="text-xl font-semibold tracking-tight group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:hidden transition-opacity duration-300">
-            AgentConnect
+          <h1 className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:hidden transition-opacity duration-300">
+            ACNBP Protocol
           </h1>
         </div>
         <div className="md:hidden ml-auto">

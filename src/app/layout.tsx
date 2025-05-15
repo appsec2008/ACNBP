@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AgentConnect',
-  description: 'Simulate and evaluate agent interactions and skill sets.',
+  title: 'Agent Capability Negotiation and Binding Protocol',
+  description: 'A platform for demonstrating Agent Capability Negotiation and Binding Protocol (ACNBP) functionalities.',
 };
 
 export default function RootLayout({
