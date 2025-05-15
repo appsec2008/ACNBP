@@ -14,7 +14,7 @@ interface Feature {
   description: string;
   icon: LucideIcon;
   href: string;
-  imgHint: string; // Keep for potential future use or as a descriptor
+  imgHint: string;
   placeholderImg: string;
 }
 
@@ -24,7 +24,7 @@ const initialFeaturesData: Feature[] = [
     description: "Demonstrate the process of agents negotiating capabilities based on requirements and offers.",
     icon: BotMessageSquare,
     href: "/capability-negotiation",
-    placeholderImg: "https://placehold.co/500x280.png",
+    placeholderImg: "https://placehold.co/500x280.png?text=",
     imgHint: "discussion gears negotiation"
   },
   {
@@ -32,7 +32,7 @@ const initialFeaturesData: Feature[] = [
     description: "A directory for registering and discovering agents, their capabilities, and protocol support.",
     icon: ListTree,
     href: "/agent-directory",
-    placeholderImg: "https://placehold.co/500x280.png",
+    placeholderImg: "https://placehold.co/500x280.png?text=",
     imgHint: "network nodes directory"
   },
   {
@@ -40,7 +40,7 @@ const initialFeaturesData: Feature[] = [
     description: "Explore the mechanisms for establishing secure and trusted bindings between agents.",
     icon: ShieldCheck,
     href: "/secure-binding",
-    placeholderImg: "https://placehold.co/500x280.png",
+    placeholderImg: "https://placehold.co/500x280.png?text=",
     imgHint: "padlock connection security"
   },
   {
@@ -48,14 +48,12 @@ const initialFeaturesData: Feature[] = [
     description: "Utilize AI to evaluate capability offers based on multiple criteria like cost, QoS, and security.",
     icon: BrainCircuit,
     href: "/offer-evaluation",
-    placeholderImg: "https://placehold.co/500x280.png",
+    placeholderImg: "https://placehold.co/500x280.png?text=",
     imgHint: "ai analysis evaluation"
   },
 ];
 
 export default function DashboardPage() {
-  // No longer need to manage generated image state or loading state here
-
   return (
     <div className="container mx-auto py-2">
       <PageHeader
@@ -75,7 +73,7 @@ export default function DashboardPage() {
                 height={280}
                 className="w-full h-full object-cover"
                 data-ai-hint={feature.imgHint}
-                priority={index < 2} // Prioritize loading for first two images
+                priority={index < 2}
               />
             </CardHeader>
             <CardContent className="p-6 flex-grow flex flex-col">
