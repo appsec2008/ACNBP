@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { AgentRegistration, ANSNameParts, ANSProtocol, SignedCertificate } from '@/lib/types';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { getCACryptoKeys } from '@/app/api/secure-binding/ca/route';
-import { getDb } from '@/lib/db'; // Import the database utility
+import { getOrInitializeCACryptoKeys } from '@/app/api/secure-binding/ca/route'; // UPDATED IMPORT
+import { getDb } from '@/lib/db';
 
 // Schema for validating the registration request body
 const registrationRequestSchema = z.object({
@@ -48,6 +48,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  let ansNameParts: ANSNameParts | undefined; // Define here for use in catch block
   try {
     const db = await getDb();
     const body = await request.json();
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const { protocol, agentID, agentCapability, provider, version, extension, protocolExtensions } = parsedBody.data;
 
-    const ansNameParts: ANSNameParts = { protocol: protocol as ANSProtocol, agentID, agentCapability, provider, version, extension };
+    ansNameParts = { protocol: protocol as ANSProtocol, agentID, agentCapability, provider, version, extension };
     const ansName = constructANSName(ansNameParts);
 
     // Check for duplicate ANSName in DB
@@ -68,26 +69,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Agent with ANSName '${ansName}' already registered.` }, { status: 409 });
     }
 
+    // Generate agent key pair (public key will be part of the certificate)
+    // The private key is not stored by the registry.
     const { publicKey: agentPublicKeyPem } = crypto.generateKeyPairSync('ec', {
       namedCurve: 'P-256',
       publicKeyEncoding: { type: 'spki', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, // Private key generated but not stored by registry
     });
 
-    let caCryptoKeys = getCACryptoKeys();
-    if (!caCryptoKeys) {
-      // Attempt to initialize CA if not already done.
-      await fetch(new URL('/api/secure-binding/ca', request.url).toString(), { method: 'POST' });
-      caCryptoKeys = getCACryptoKeys(); 
-      if (!caCryptoKeys) {
-        return NextResponse.json({ error: 'CA not initialized and auto-initialization failed. Please setup CA first.' }, { status: 500 });
-      }
-    }
+    // Get CA keys, initializing them if necessary
+    const caCryptoKeys = getOrInitializeCACryptoKeys();
     
     const certPayloadForSign: Omit<SignedCertificate, 'signature'> = {
       subjectAgentId: agentID,
       subjectPublicKey: agentPublicKeyPem,
-      subjectAnsEndpoint: ansName,
+      subjectAnsEndpoint: ansName, // The agent's full ANSName is part of the certificate
       issuer: "DemoCA",
       validFrom: new Date().toISOString(),
       validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year validity
@@ -96,7 +92,6 @@ export async function POST(request: NextRequest) {
     signInstance.update(JSON.stringify(certPayloadForSign));
     signInstance.end();
     
-    // Explicitly create a KeyObject for the CA's private key
     const caPrivateKeyObject = crypto.createPrivateKey(caCryptoKeys.privateKey);
     const signature = signInstance.sign(caPrivateKeyObject, 'base64');
     
@@ -106,11 +101,12 @@ export async function POST(request: NextRequest) {
       id: `reg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       ...ansNameParts,
       ansName,
-      agentCertificate,
+      agentCertificate, // This is now the SignedCertificate object
       protocolExtensions,
       timestamp: new Date().toISOString(),
     };
 
+    // Store agentCertificate and protocolExtensions as JSON strings in DB
     const agentCertificateString = JSON.stringify(newAgentRegistration.agentCertificate);
     const protocolExtensionsString = JSON.stringify(newAgentRegistration.protocolExtensions);
 
@@ -135,8 +131,13 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Agent registration error:", error);
     let message = "Failed to register agent.";
+    // Construct ansNameForError only if ansNameParts is defined
+    const ansNameForError = ansNameParts 
+        ? constructANSName(ansNameParts)
+        : 'unknown';
+
     if (error.message && error.message.includes('UNIQUE constraint failed: agents.ansName')) {
-        message = `Agent with ANSName '${ansNameParts.protocol}://${ansNameParts.agentID}.${ansNameParts.agentCapability}.${ansNameParts.provider}.v${ansNameParts.version}${ansNameParts.extension ? '.' + ansNameParts.extension : ''}' already registered.`;
+        message = `Agent with ANSName '${ansNameForError}' already registered.`;
     } else if (error instanceof Error) {
         message = error.message;
     }

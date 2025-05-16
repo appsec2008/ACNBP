@@ -25,24 +25,24 @@ function generateCAKeys(): CAKeys {
   return { publicKey, privateKey };
 }
 
-export async function POST() {
+// Ensures CA keys are initialized and returns them.
+// This function is intended for use by other modules.
+export function getOrInitializeCACryptoKeys(): CAKeys {
   if (!caKeys) {
     caKeys = generateCAKeys();
-    console.log('CA keys generated and stored in memory.');
+    console.log('CA keys generated and stored in memory (on-demand initialization).');
   }
-  return NextResponse.json({ message: 'CA setup complete.', caPublicKey: caKeys.publicKey });
+  return caKeys;
+}
+
+export async function POST() {
+  // Ensure keys are generated if not already, and get them.
+  const currentCaKeys = getOrInitializeCACryptoKeys();
+  return NextResponse.json({ message: 'CA setup complete.', caPublicKey: currentCaKeys.publicKey });
 }
 
 export async function GET() {
-  if (!caKeys) {
-    // Auto-initialize if not present, for simplicity in demo flow
-    caKeys = generateCAKeys();
-    console.log('CA keys generated on GET request as they were not present.');
-  }
-  return NextResponse.json({ caPublicKey: caKeys.publicKey });
-}
-
-// Internal function to get CA keys, not exported as a route
-export function getCACryptoKeys(): CAKeys | null {
-  return caKeys;
+  // Ensure keys are generated if not already, and get them.
+  const currentCaKeys = getOrInitializeCACryptoKeys();
+  return NextResponse.json({ caPublicKey: currentCaKeys.publicKey });
 }
