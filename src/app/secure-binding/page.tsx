@@ -76,13 +76,15 @@ export default function SecureBindingPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        // Use details from API error if available, otherwise generic error message
+        const errorDetails = data.details || data.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorDetails);
       }
-      logEntry(stepName, `${successMessage}`, 'success', CheckCircle2, data);
+      logEntry(stepName, successMessage, 'success', CheckCircle2, data);
       toast({ title: 'Success', description: successMessage });
       return data;
     } catch (error: any) {
-      logEntry(stepName, `${errorMessage}: ${error.message}`, 'error', AlertTriangle, error);
+      logEntry(stepName, `${errorMessage}: ${error.message}`, 'error', AlertTriangle, { error: error.message, responseData: error.responseData });
       toast({ title: 'Error', description: `${errorMessage}: ${error.message}`, variant: 'destructive' });
       return null;
     } finally {
@@ -119,8 +121,8 @@ export default function SecureBindingPage() {
   const initializeAgent = async (
     agentState: AgentState, 
     agentSetter: React.Dispatch<React.SetStateAction<AgentState>>, 
-    agentDisplayName: string, // e.g., "Client Agent (Agent A)"
-    stepPrefix: string // e.g., "3a"
+    agentDisplayName: string, 
+    stepPrefix: string 
   ) => {
     if (!agentState.id || !agentState.ansEndpoint) {
         logEntry(`Initialize ${agentDisplayName}`, `${agentDisplayName} ID or ANS Endpoint not set. Load agent first.`, 'error', AlertTriangle);
@@ -136,7 +138,7 @@ export default function SecureBindingPage() {
       { agentId: agentState.id }, 
       `${stepPrefix}. Generate ${agentDisplayName} Keys`, 
       `${agentState.id}Keys`,
-      `${agentDisplayName} keys generated.`,
+      `${agentDisplayName} keys generated. Public key available in details.`,
       `Failed to generate ${agentDisplayName} keys.`
     );
 
@@ -148,7 +150,7 @@ export default function SecureBindingPage() {
         { agentId: agentState.id, agentPublicKey: keyData.publicKey, agentAnsEndpoint: agentState.ansEndpoint },
         `${stepPrefix === "3a" ? "3b" : "4b"}. Issue ${agentDisplayName} Certificate (ID, PubKey, ANS Endpoint)`,
         `${agentState.id}Cert`,
-        `${agentDisplayName} certificate issued with its ID, Public Key, and ANS endpoint.`,
+        `${agentDisplayName} certificate issued. Details (ID, PubKey, ANS Endpoint) available in log.`,
         `Failed to issue ${agentDisplayName} certificate.`
       );
       if (certData) {
@@ -169,8 +171,8 @@ export default function SecureBindingPage() {
       { agentId: agentA.id, message: messageToSign },
       `5. Client Agent (${agentA.id}) Signs Message`,
       'signMsg',
-      `Message signed by Client Agent (${agentA.id}). Certificate and signature ready to be "sent".`,
-      `Failed to sign message.`
+      `Message signed by Client Agent (${agentA.id}). Certificate and signature ready to be "sent". View details for signature and certificate.`,
+      `Failed to sign message for Client Agent (${agentA.id}).`
     );
     if (data?.signature) {
       setSignedMessage({ message: messageToSign, signature: data.signature, certificate: agentA.certificate });
@@ -189,6 +191,7 @@ export default function SecureBindingPage() {
         return;
     }
 
+    // The success message for handleApiCall will be generic; more specific toast/log will come from the data processing.
     const verificationResult = await handleApiCall(
       '/api/secure-binding/verify-message',
       'POST',
@@ -199,12 +202,21 @@ export default function SecureBindingPage() {
       },
       `6. Server Agent (${agentB.id}) Verifies Message & Client's Certificate`,
       'verifyMsg',
-      `Verification attempt complete by Server Agent (${agentB.id}). Check details below.`,
-      `Verification process failed for Server Agent (${agentB.id}).`
+      `Verification processed for Client. Check details below.`, // Generic success for API call
+      `Verification process failed for Server Agent (${agentB.id}).` // Generic error for API call
     );
-    // Log details are already handled by handleApiCall based on verificationResult content
-    // The certificate from signedMessage.certificate (which includes agent A's ID and ANS endpoint) is shown in the log for step 5.
-    // The verification result in step 6 will confirm if this certificate was valid and if the message signature matched.
+
+    // Specific logging and toast based on the verificationResult content is implicitly handled by 
+    // handleApiCall's logEntry which includes the 'data' (verificationResult).
+    // The verificationResult now contains 'verifiedCertificateInfo'.
+    // The toast from handleApiCall will show the generic success/error.
+    // The details in the log entry will show the specific outcome including agent ID and endpoint from verifiedCertificateInfo.
+    if (verificationResult?.overallStatus === 'success') {
+        toast({ title: 'Verification Successful', description: verificationResult.details || `Message and certificate verified.`});
+    } else if (verificationResult) { // API call was ok, but verification failed
+        toast({ title: 'Verification Failed', description: verificationResult.details || 'Check log for details.', variant: 'destructive'});
+    }
+    // If verificationResult is null, handleApiCall has already shown an error toast.
   };
 
   return (
@@ -311,5 +323,3 @@ export default function SecureBindingPage() {
     </>
   );
 }
-
-    
