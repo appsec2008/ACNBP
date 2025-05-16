@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -22,13 +23,15 @@ import {
   BrainCircuit,
   NetworkIcon,
   Github,
+  SearchCode, // Icon for ANS Resolution
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/capability-negotiation", label: "Capability Negotiation", icon: BotMessageSquare },
-  { href: "/agent-directory", label: "Agent Directory", icon: ListTree },
+  { href: "/agent-directory", label: "ANS Agent Registry", icon: ListTree },
+  { href: "/ans-resolution", label: "ANS Resolution", icon: SearchCode },
   { href: "/secure-binding", label: "Secure Binding", icon: ShieldCheck },
   { href: "/offer-evaluation", label: "Offer Evaluation", icon: BrainCircuit },
 ];
@@ -88,3 +91,5 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
+    

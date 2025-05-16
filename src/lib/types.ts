@@ -40,17 +40,49 @@ export interface NegotiationApiResponse {
 }
 
 
-// --- Agent Directory Service Schemas ---
+// --- Agent Name Service (ANS) Schemas ---
 
-// Defines the schema for an "AgentRegistration" object used in the Agent Directory.
-export interface AgentRegistration {
-  id: string; // Unique identifier for the agent registration
-  name: string; // Name of the agent
-  address: string; // Network address of the agent (e.g., "tcp://192.168.1.10:5555")
-  capabilities: string[]; // List of capabilities the agent offers
-  protocolExtensions: string[]; // List of protocol extensions supported by the agent
-  timestamp: string; // ISO string representing the registration time. Can be formatted for display.
+export type ANSProtocol = "a2a" | "mcp" | "acp" | "other";
+
+// Represents the constituent parts of an ANSName, used for construction and parsing.
+export interface ANSNameParts {
+  protocol: ANSProtocol;
+  agentID: string;
+  agentCapability: string;
+  provider: string;
+  version: string; // Should follow Semantic Versioning (e.g., "1.0.0", "2.1.3-beta")
+  extension?: string; // Optional
 }
+
+// Defines the schema for an "AgentRegistration" object stored in the ANS Agent Registry.
+// This aligns with the AgentRegistrationRequest schema concept from the paper.
+export interface AgentRegistration extends ANSNameParts {
+  ansName: string; // The fully constructed ANSName string
+  id: string; // Unique identifier for the registration entry itself (e.g., UUID)
+  certificatePem: string; // Mock PEM-encoded X.509 certificate string
+  protocolExtensions: { [key: string]: any }; // Protocol-specific data (e.g., A2A Agent Card, MCP tool description with endpoint)
+  timestamp: string; // ISO string representing the registration time.
+}
+
+// Schema for ANS Resolution Request (AgentCapabilityRequest from the paper)
+// Used when querying the ANS to resolve an ANSName.
+export interface ANSCapabilityRequest {
+  requestType: "resolve";
+  ansName: string; // The full ANSName to resolve
+  // The paper also lists individual parts (protocol, agentID etc.) - for simplicity,
+  // our resolver API will primarily use the full ansName for lookup in this prototype.
+  // We can add specific version range requests later if needed.
+}
+
+// Schema for ANS Resolution Response (AgentCapabilityResponse from the paper)
+// Returned by the ANS when an ANSName is resolved.
+export interface ANSCapabilityResponse {
+  endpoint: string; // The resolved agent endpoint (e.g., URL, service binding)
+  certificatePem: string; // The agent's (mock) PEM-encoded certificate
+  signature: string; // A signature from the Agent Registry over the (Endpoint + Certificate) data, proving authenticity of this resolution response.
+  ansName: string; // The ANSName that was resolved.
+}
+
 
 // --- AI Flow Schemas (Conceptual - Source of truth is Zod in flow files) ---
 // These are for conceptual reference if needed elsewhere, though not directly used by the flow.
@@ -76,3 +108,5 @@ export interface EvaluatedOfferFromAI {
   score: number;
   reasoning: string;
 }
+
+    
