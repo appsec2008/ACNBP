@@ -77,11 +77,8 @@ export async function POST(request: NextRequest) {
     let caCryptoKeys = getCACryptoKeys();
     if (!caCryptoKeys) {
       // Attempt to initialize CA if not already done.
-      // Use a relative URL for server-side fetch if running in the same origin,
-      // or an absolute URL if this API could be deployed separately.
-      // For Next.js, request.url gives the full URL of the incoming request.
       await fetch(new URL('/api/secure-binding/ca', request.url).toString(), { method: 'POST' });
-      caCryptoKeys = getCACryptoKeys(); // Try fetching again
+      caCryptoKeys = getCACryptoKeys(); 
       if (!caCryptoKeys) {
         return NextResponse.json({ error: 'CA not initialized and auto-initialization failed. Please setup CA first.' }, { status: 500 });
       }
@@ -95,10 +92,14 @@ export async function POST(request: NextRequest) {
       validFrom: new Date().toISOString(),
       validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year validity
     };
-    const sign = crypto.createSign('SHA256');
-    sign.update(JSON.stringify(certPayloadForSign));
-    sign.end();
-    const signature = sign.sign(caCryptoKeys.privateKey, 'base64');
+    const signInstance = crypto.createSign('SHA256');
+    signInstance.update(JSON.stringify(certPayloadForSign));
+    signInstance.end();
+    
+    // Explicitly create a KeyObject for the CA's private key
+    const caPrivateKeyObject = crypto.createPrivateKey(caCryptoKeys.privateKey);
+    const signature = signInstance.sign(caPrivateKeyObject, 'base64');
+    
     const agentCertificate: SignedCertificate = { ...certPayloadForSign, signature };
 
     const newAgentRegistration: AgentRegistration = {
@@ -110,7 +111,6 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     };
 
-    // Serialize agentCertificate and protocolExtensions for DB storage
     const agentCertificateString = JSON.stringify(newAgentRegistration.agentCertificate);
     const protocolExtensionsString = JSON.stringify(newAgentRegistration.protocolExtensions);
 
@@ -136,10 +136,10 @@ export async function POST(request: NextRequest) {
     console.error("Agent registration error:", error);
     let message = "Failed to register agent.";
     if (error.message && error.message.includes('UNIQUE constraint failed: agents.ansName')) {
-        message = `Agent with ANSName already registered.`; // More specific error
+        message = `Agent with ANSName '${ansNameParts.protocol}://${ansNameParts.agentID}.${ansNameParts.agentCapability}.${ansNameParts.provider}.v${ansNameParts.version}${ansNameParts.extension ? '.' + ansNameParts.extension : ''}' already registered.`;
     } else if (error instanceof Error) {
         message = error.message;
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, ansNameParts }, { status: 500 });
   }
 }
