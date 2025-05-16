@@ -75,6 +75,8 @@ export interface AgentRegistration extends ANSNameParts {
   agentCertificate: SignedCertificate; // The CA-issued certificate for the agent.
   protocolExtensions: { [key: string]: any }; // Protocol-specific data (e.g., A2A Agent Card, MCP tool description with endpoint)
   timestamp: string; // ISO string representing the registration time.
+  isRevoked?: boolean; // Optional: True if the agent registration/certificate is revoked
+  revocationTimestamp?: string; // Optional: ISO string representing when it was revoked
 }
 
 // Schema for ANS Resolution Request (AgentCapabilityRequest from the paper, Section 4)
@@ -123,4 +125,3 @@ export interface EvaluatedOfferFromAI {
   score: number;
   reasoning: string;
 }
-

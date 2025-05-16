@@ -4,14 +4,13 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ListTree, PlusCircle, Search, Server, Info, Fingerprint, FileJson, Globe, Tag, Package, Layers, Workflow, FileBadge } from "lucide-react";
+import { ListTree, PlusCircle, Search, Server, Info, Fingerprint, FileJson, Globe, Tag, Package, Layers, Workflow, FileBadge, RefreshCcw, ShieldOff, CalendarClock, CalendarX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { AgentRegistration, ANSProtocol, SignedCertificate } from "@/lib/types";
+import type { AgentRegistration, ANSProtocol } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -19,14 +18,14 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
+import { Badge } from '@/components/ui/badge';
 
 export default function ANSAgentRegistryPage() {
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
+  const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({ form: false, list: true });
 
   // Form state
   const [protocol, setProtocol] = useState<ANSProtocol | "">("");
@@ -38,16 +37,16 @@ export default function ANSAgentRegistryPage() {
   const [protocolExtensions, setProtocolExtensions] = useState("");
 
   const fetchAgents = async () => {
-    setIsFetching(true);
+    setIsLoading(prev => ({...prev, list: true}));
     try {
       const response = await fetch('/api/agent-registry');
       if (!response.ok) throw new Error('Failed to fetch agents');
       const data = await response.json();
       setAgents(data);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Could not load agents.", variant: "destructive" });
+      toast({ title: "Error Loading Agents", description: error.message || "Could not load agents.", variant: "destructive" });
     } finally {
-      setIsFetching(false);
+      setIsLoading(prev => ({...prev, list: false}));
     }
   };
 
@@ -66,13 +65,13 @@ export default function ANSAgentRegistryPage() {
   };
 
   useEffect(() => {
-    resetForm(true); // Initialize form with default/placeholder values on mount
+    resetForm(true); 
   }, []);
 
 
   const handleRegisterAgent = async (e: FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsLoading(prev => ({...prev, form: true}));
 
     let parsedProtocolExtensions;
     try {
@@ -82,7 +81,7 @@ export default function ANSAgentRegistryPage() {
       }
     } catch (err:any) {
       toast({ title: "Registration Failed", description: err.message || "Protocol Extensions must be valid JSON and include an 'endpoint'.", variant: "destructive" });
-      setIsLoading(false);
+      setIsLoading(prev => ({...prev, form: false}));
       return;
     }
 
@@ -111,8 +110,8 @@ export default function ANSAgentRegistryPage() {
       }
       
       toast({ title: "Agent Registered", description: `${responseData.ansName} has been successfully added. Its certificate has been issued by the CA.` });
-      fetchAgents(); // Refresh the list
-      resetForm(); // Clear form fields for next entry, now with randomized agentID
+      fetchAgents(); 
+      resetForm(); 
     } catch (error: any) {
        toast({
          title: "Registration Failed",
@@ -122,9 +121,48 @@ export default function ANSAgentRegistryPage() {
          className: "max-w-md" 
        });
     } finally {
-      setIsLoading(false);
+      setIsLoading(prev => ({...prev, form: false}));
     }
   };
+
+  const handleRenewAgent = async (ansName: string) => {
+    setIsLoading(prev => ({...prev, [ansName]: true}));
+    try {
+      const response = await fetch('/api/agent-registry/renew', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ansName }),
+      });
+      const responseData = await response.json();
+      if (!response.ok) throw new Error(responseData.error || "Failed to renew agent.");
+      toast({ title: "Agent Renewed", description: `${ansName} has been successfully renewed.` });
+      fetchAgents(); // Refresh list
+    } catch (error: any) {
+      toast({ title: "Renewal Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsLoading(prev => ({...prev, [ansName]: false}));
+    }
+  };
+
+  const handleRevokeAgent = async (ansName: string) => {
+    setIsLoading(prev => ({...prev, [ansName]: true}));
+    try {
+      const response = await fetch('/api/agent-registry/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ansName }),
+      });
+      const responseData = await response.json();
+      if (!response.ok) throw new Error(responseData.error || "Failed to revoke agent.");
+      toast({ title: "Agent Revoked", description: `${ansName} has been successfully revoked.` });
+      fetchAgents(); // Refresh list
+    } catch (error: any) {
+      toast({ title: "Revocation Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsLoading(prev => ({...prev, [ansName]: false}));
+    }
+  };
+
 
   const filteredAgents = agents.filter(agent => 
     agent.ansName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,7 +174,7 @@ export default function ANSAgentRegistryPage() {
     <>
       <PageHeader
         title="ANS Agent Registry"
-        description="Register and discover agents using the Agent Name Service (ANS) protocol. During registration, a certificate is issued by the CA, binding the agent's identity (ID, Public Key, ANSName/Endpoint). This certificate is stored with the registration."
+        description="Register, discover, renew, and revoke agents. During registration, a certificate is issued by the CA, binding the agent's identity (ID, Public Key, ANSName/Endpoint). This certificate is stored with the registration."
         icon={ListTree}
       />
 
@@ -147,7 +185,7 @@ export default function ANSAgentRegistryPage() {
               <CardTitle className="flex items-center"><PlusCircle className="mr-2 h-5 w-5" /> Register New Agent</CardTitle>
               <CardDescription>Provide details to register an agent. A key pair and certificate will be generated and issued by the CA.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
+            <CardContent className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">
               <div className="grid grid-cols-2 gap-4">
                 <FormItem Icon={Globe} label="Protocol" htmlFor="protocol">
                   <Select value={protocol} onValueChange={(value) => setProtocol(value as ANSProtocol)}>
@@ -184,8 +222,8 @@ export default function ANSAgentRegistryPage() {
               </FormItem>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading || !protocol || !agentID || !agentCapability || !provider || !version || !protocolExtensions}>
-                {isLoading ? <Workflow className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />} 
+              <Button type="submit" className="w-full" disabled={isLoading.form || !protocol || !agentID || !agentCapability || !provider || !version || !protocolExtensions}>
+                {isLoading.form ? <Workflow className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />} 
                 Register Agent & Issue Certificate
               </Button>
             </CardFooter>
@@ -208,19 +246,20 @@ export default function ANSAgentRegistryPage() {
           </CardHeader>
           <CardContent className="max-h-[calc(100vh-220px)]">
             <ScrollArea className="h-full">
-              {isFetching ? (
+              {isLoading.list ? (
                 <p className="text-muted-foreground text-center py-8">Loading agents...</p>
               ) : filteredAgents.length > 0 ? (
                 <Accordion type="single" collapsible className="w-full">
                   {filteredAgents.map((agent) => (
                     <AccordionItem value={agent.id} key={agent.id}>
-                      <AccordionTrigger className="hover:no-underline">
+                      <AccordionTrigger className={`hover:no-underline ${agent.isRevoked ? 'opacity-50' : ''}`}>
                         <div className="flex flex-col items-start text-left w-full">
-                            <span className="font-medium text-primary hover:underline" title={agent.ansName}>
+                            <span className={`font-medium ${agent.isRevoked ? 'text-muted-foreground line-through' : 'text-primary hover:underline'}`} title={agent.ansName}>
                                 {agent.ansName.length > 60 ? agent.ansName.substring(0,57) + "..." : agent.ansName}
+                                {agent.isRevoked && <Badge variant="destructive" className="ml-2">REVOKED</Badge>}
                             </span>
                             <div className="text-xs text-muted-foreground">
-                                Capability: {agent.agentCapability} | Provider: {agent.provider} | Registered: {new Date(agent.timestamp).toLocaleDateString()}
+                                Capability: {agent.agentCapability} | Provider: {agent.provider}
                             </div>
                         </div>
                       </AccordionTrigger>
@@ -230,7 +269,24 @@ export default function ANSAgentRegistryPage() {
                           <p><strong>Agent ID:</strong> {agent.agentID}</p>
                           <p><strong>Version:</strong> {agent.version}</p>
                           {agent.extension && <p><strong>Extension:</strong> {agent.extension}</p>}
-                          <p><strong>Registered At:</strong> {new Date(agent.timestamp).toLocaleString()}</p>
+                          <p className="flex items-center">
+                            <CalendarClock className="mr-1 h-3 w-3"/> 
+                            <strong>Registered/Renewed:</strong> {new Date(agent.timestamp).toLocaleString()}
+                          </p>
+                           <p className="flex items-center">
+                             <CalendarClock className="mr-1 h-3 w-3 text-green-600"/>
+                             <strong>Cert Valid From:</strong> {new Date(agent.agentCertificate.validFrom).toLocaleString()}
+                           </p>
+                           <p className="flex items-center">
+                             <CalendarClock className="mr-1 h-3 w-3 text-orange-600"/>
+                            <strong>Cert Valid To:</strong> {new Date(agent.agentCertificate.validTo).toLocaleString()}
+                          </p>
+                          {agent.isRevoked && agent.revocationTimestamp && (
+                            <p className="flex items-center text-destructive">
+                              <CalendarX className="mr-1 h-3 w-3"/>
+                              <strong>Revoked On:</strong> {new Date(agent.revocationTimestamp).toLocaleString()}
+                            </p>
+                          )}
                           <div>
                             <strong>Protocol Extensions:</strong>
                             <ScrollArea className="h-24 mt-1">
@@ -246,6 +302,33 @@ export default function ANSAgentRegistryPage() {
                                   {JSON.stringify(agent.agentCertificate, null, 2)}
                                 </pre>
                             </ScrollArea>
+                          </div>
+                           <div className="flex space-x-2 mt-3">
+                            {!agent.isRevoked && (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleRenewAgent(agent.ansName)} 
+                                disabled={isLoading[agent.ansName]}
+                                className="bg-green-500/10 hover:bg-green-500/20 border-green-500/50 text-green-700"
+                              >
+                                {isLoading[agent.ansName] ? <Workflow className="mr-1 h-4 w-4 animate-spin"/> : <RefreshCcw className="mr-1 h-4 w-4"/>}
+                                Renew
+                              </Button>
+                            )}
+                            {!agent.isRevoked ? (
+                              <Button 
+                                size="sm" 
+                                variant="destructive" 
+                                onClick={() => handleRevokeAgent(agent.ansName)}
+                                disabled={isLoading[agent.ansName]}
+                              >
+                                {isLoading[agent.ansName] ? <Workflow className="mr-1 h-4 w-4 animate-spin"/> : <ShieldOff className="mr-1 h-4 w-4"/>}
+                                Revoke
+                              </Button>
+                            ) : (
+                               <Badge variant="outline" className="border-destructive text-destructive">Agent Revoked</Badge>
+                            )}
                           </div>
                         </div>
                       </AccordionContent>
@@ -273,6 +356,3 @@ const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, l
     {children}
   </div>
 )
-
-
-    

@@ -1,29 +1,24 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import type { AgentRegistration, ANSCapabilityRequest, ANSCapabilityResponse, SignedCertificate, ANSNameParts } from '@/lib/types';
+import type { AgentRegistration, ANSCapabilityRequest, ANSCapabilityResponse, SignedCertificate, ANSNameParts, ANSProtocol } from '@/lib/types';
 import crypto from 'crypto';
-import { getDb } from '@/lib/db'; // Import the database utility
+import { getDb } from '@/lib/db';
 import { z } from 'zod';
 
-// This is a MOCK private key for the Agent Registry to sign its responses.
-// In a real system, this would be securely managed.
 const AGENT_REGISTRY_MOCK_PRIVATE_KEY_PEM = `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIPDRg0g9a01953h6n/P9A58PG0xMhAyM9qPTmH0tL2B0oAoGCCqGSM49
 AwEHoUQDQgAE8QyL8I1bW64M7Y/C8S0Z13/4Y2GJ0x4Cq23T0B+w5y1n32c5w0xJ
 aF8o/y0mZ6XfG8jZk2xVn8gX6n1M3A==
 -----END EC PRIVATE KEY-----`;
+
 let agentRegistryPrivateKey: crypto.KeyObject | null = null;
-if (!agentRegistryPrivateKey) {
-    try {
-        agentRegistryPrivateKey = crypto.createPrivateKey(AGENT_REGISTRY_MOCK_PRIVATE_KEY_PEM);
-    } catch (e) {
-        console.error("Failed to create private key object for Agent Registry:", e);
-        // Handle error appropriately, maybe this should be a fatal error for the server
-    }
+try {
+    agentRegistryPrivateKey = crypto.createPrivateKey(AGENT_REGISTRY_MOCK_PRIVATE_KEY_PEM);
+} catch (e) {
+    console.error("Failed to create private key object for Agent Registry:", e);
 }
 
 
-// Schema for validating the resolution request body (aligns with paper's AgentCapabilityRequest)
 const resolutionRequestSchema = z.object({
   requestType: z.literal("resolve"),
   protocol: z.enum(["a2a", "mcp", "acp", "other"]),
@@ -54,14 +49,23 @@ export async function POST(request: NextRequest) {
     }
 
     const { protocol, agentID, agentCapability, provider, version, extension } = parsedBody.data;
+    const ansName = constructANSName({ protocol: protocol as ANSProtocol, agentID, agentCapability, provider, version, extension });
 
-    // Construct the ANSName from the provided components
-    const ansName = constructANSName({ protocol, agentID, agentCapability, provider, version, extension });
-
-    const row = await db.get<AgentRegistration & { agentCertificate: string; protocolExtensions: string; }>('SELECT * FROM agents WHERE ansName = ?', ansName);
+    const row = await db.get<AgentRegistration & { agentCertificate: string; protocolExtensions: string; }>(
+        'SELECT * FROM agents WHERE ansName = ?', 
+        ansName
+    );
 
     if (!row) {
       return NextResponse.json({ error: `ANSName '${ansName}' not found.` }, { status: 404 });
+    }
+
+    // Check if agent is revoked
+    if (row.isRevoked) {
+      return NextResponse.json({ 
+        error: `Agent with ANSName '${ansName}' has been revoked.`,
+        details: `Revoked on: ${row.revocationTimestamp}`
+      }, { status: 410 }); // 410 Gone is appropriate for revoked resources
     }
 
     let parsedAgentCertificate: SignedCertificate;
@@ -92,34 +96,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-
     if (!endpoint) {
       return NextResponse.json({ error: `Endpoint not found or invalid in protocolExtensions for ANSName '${ansName}'. Ensure 'endpoint' (or protocol-specific e.g. 'mcpEndpoint') is defined.` }, { status: 404 });
     }
-
-    // Temporarily removing Agent Registry's own signature for simpler testing
-    // const dataToSign = JSON.stringify({ 
-    //   ansName: row.ansName, // Use ansName directly from the row as it's confirmed
-    //   endpoint: endpoint, 
-    //   agentCertificate: parsedAgentCertificate 
-    // });
-    
-    // const signInstance = crypto.createSign('SHA256');
-    // signInstance.update(dataToSign);
-    // signInstance.end();
-    
-    // let signatureByRegistry: string | undefined = undefined;
-    // if (agentRegistryPrivateKey) {
-    //   signatureByRegistry = signInstance.sign(agentRegistryPrivateKey, 'base64');
-    // } else {
-    //   console.warn("Agent Registry private key not available for signing resolution response.");
-    // }
 
     const responsePayload: ANSCapabilityResponse = {
       ansName: row.ansName,
       endpoint: endpoint,
       agentCertificate: parsedAgentCertificate,
-      // signature: signatureByRegistry, // Temporarily removed
+      // signature: Temporarily removed for easier testing
     };
 
     return NextResponse.json(responsePayload);
@@ -133,4 +118,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

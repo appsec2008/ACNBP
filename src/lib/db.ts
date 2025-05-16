@@ -18,12 +18,15 @@ let dbInstance: Database | null = null;
 export async function getDb(): Promise<Database> {
   if (!dbInstance) {
     try {
+      console.log(`Attempting to open/create SQLite database at: ${dbPath}`);
       dbInstance = await open({
         filename: dbPath,
         driver: verboseSqlite3.Database
       });
 
       // Create table if it doesn't exist
+      // Note: If you modify this schema after the DB file is created,
+      // you may need to delete agent_registry.db for changes to apply in dev.
       await dbInstance.exec(`
         CREATE TABLE IF NOT EXISTS agents (
           id TEXT PRIMARY KEY,
@@ -36,15 +39,27 @@ export async function getDb(): Promise<Database> {
           ansName TEXT NOT NULL UNIQUE,
           agentCertificate TEXT NOT NULL, -- Store as JSON string
           protocolExtensions TEXT NOT NULL, -- Store as JSON string
-          timestamp TEXT NOT NULL -- ISO string
+          timestamp TEXT NOT NULL, -- ISO string for registration/last renewal
+          isRevoked BOOLEAN DEFAULT 0, -- 0 for false, 1 for true
+          revocationTimestamp TEXT -- ISO string for when it was revoked
         );
       `);
-      console.log(`SQLite database initialized at ${dbPath}`);
+      // Check if columns exist before trying to add them, to avoid errors if they are already there.
+      const columns = await dbInstance.all("PRAGMA table_info(agents);");
+      const columnNames = columns.map(col => col.name);
+
+      if (!columnNames.includes('isRevoked')) {
+        await dbInstance.exec('ALTER TABLE agents ADD COLUMN isRevoked BOOLEAN DEFAULT 0;');
+        console.log("Added 'isRevoked' column to agents table.");
+      }
+      if (!columnNames.includes('revocationTimestamp')) {
+        await dbInstance.exec('ALTER TABLE agents ADD COLUMN revocationTimestamp TEXT;');
+        console.log("Added 'revocationTimestamp' column to agents table.");
+      }
+      
+      console.log(`SQLite database initialized and schema verified at ${dbPath}`);
     } catch (error) {
       console.error('Failed to initialize SQLite database:', error);
-      // If DB initialization fails, we might want to throw or handle it
-      // depending on how critical DB access is at startup.
-      // For now, let's re-throw so the caller knows.
       throw error;
     }
   }
