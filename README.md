@@ -34,8 +34,8 @@ Before you begin, ensure you have the following installed:
 
 1.  **Clone the repository (if you haven't already):**
     ```bash
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone https://github.com/appsec2008/https---github.com-appsec2008-ACNBP-Protocol.git
+    cd ACNBP-Protocol
     ```
 
 2.  **Install dependencies:**
