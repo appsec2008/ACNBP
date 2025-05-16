@@ -102,6 +102,18 @@ Contributions are welcome! If you'd like to contribute to this project, please f
 
 Please ensure your code is well-formatted and, if adding new features, consider if any documentation updates are needed.
 
+## Referencing this Project
+
+If you use this ACNBP Platform in your research or work, please consider citing the associated paper:
+
+Huang, K. ([Year of Paper]). *[Title of your arXiv Paper]*. arXiv preprint arXiv:[arXiv ID, e.g., 2401.12345]. Retrieved from [Full URL to your arXiv paper, e.g., https://arxiv.org/abs/2401.12345]
+
+*(Please replace the bracketed placeholders with your specific paper details.)*
+
+You can also refer to this software implementation:
+
+Huang, K. (2024). *Agent Capability Negotiation and Binding Protocol (ACNBP) Platform* [Software]. Retrieved from [URL of this GitHub Repository, if public]
+
 ## License
 
 This project is licensed under the MIT License.
