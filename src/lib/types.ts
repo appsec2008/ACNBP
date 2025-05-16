@@ -54,33 +54,44 @@ export interface ANSNameParts {
   extension?: string; // Optional
 }
 
+// Defines the structure of the "certificate" issued by the CA to an agent.
+// This is a JSON object signed by the CA.
+export interface SignedCertificate {
+  subjectAgentId: string;
+  subjectPublicKey: string; // PEM format
+  subjectAnsEndpoint: string; // The agent's full ANSName
+  issuer: string; // e.g., "DemoCA"
+  validFrom: string; // ISO Date string
+  validTo: string; // ISO Date string
+  signature: string; // Base64 signature of the above fields (excluding this signature field itself), made by the CA's private key
+}
+
+
 // Defines the schema for an "AgentRegistration" object stored in the ANS Agent Registry.
 // This aligns with the AgentRegistrationRequest schema concept from the paper.
 export interface AgentRegistration extends ANSNameParts {
   ansName: string; // The fully constructed ANSName string
   id: string; // Unique identifier for the registration entry itself (e.g., UUID)
-  certificatePem: string; // Mock PEM-encoded X.509 certificate string
+  agentCertificate: SignedCertificate; // The CA-issued certificate for the agent.
   protocolExtensions: { [key: string]: any }; // Protocol-specific data (e.g., A2A Agent Card, MCP tool description with endpoint)
   timestamp: string; // ISO string representing the registration time.
 }
 
 // Schema for ANS Resolution Request (AgentCapabilityRequest from the paper)
 // Used when querying the ANS to resolve an ANSName.
+// For this prototype, we primarily use ansName for lookup.
 export interface ANSCapabilityRequest {
   requestType: "resolve";
   ansName: string; // The full ANSName to resolve
-  // The paper also lists individual parts (protocol, agentID etc.) - for simplicity,
-  // our resolver API will primarily use the full ansName for lookup in this prototype.
-  // We can add specific version range requests later if needed.
 }
 
 // Schema for ANS Resolution Response (AgentCapabilityResponse from the paper)
 // Returned by the ANS when an ANSName is resolved.
 export interface ANSCapabilityResponse {
-  endpoint: string; // The resolved agent endpoint (e.g., URL, service binding)
-  certificatePem: string; // The agent's (mock) PEM-encoded certificate
-  signature: string; // A signature from the Agent Registry over the (Endpoint + Certificate) data, proving authenticity of this resolution response.
   ansName: string; // The ANSName that was resolved.
+  endpoint: string; // The resolved agent endpoint (e.g., URL, service binding from protocolExtensions)
+  agentCertificate: SignedCertificate; // The agent's CA-issued certificate.
+  signature: string; // A signature from the Agent Registry over the (Endpoint + AgentCertificate + ANSName) data, proving authenticity of this resolution response.
 }
 
 
@@ -108,5 +119,3 @@ export interface EvaluatedOfferFromAI {
   score: number;
   reasoning: string;
 }
-
-    

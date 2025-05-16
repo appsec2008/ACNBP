@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { ANSCapabilityRequest, ANSCapabilityResponse } from "@/lib/types";
-import { SearchCode, Link, ShieldAlert, CheckCheck, Loader2, FileSignature, Server } from "lucide-react";
+import type { ANSCapabilityRequest, ANSCapabilityResponse, SignedCertificate } from "@/lib/types";
+import { SearchCode, Link, ShieldAlert, CheckCheck, Loader2, FileSignature, Server, FileBadge } from "lucide-react";
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function ANSResolutionPage() {
@@ -64,7 +64,7 @@ export default function ANSResolutionPage() {
     <>
       <PageHeader
         title="ANS Name Resolution"
-        description="Resolve an Agent Name Service (ANSName) to retrieve its endpoint and verified certificate. This demonstrates the core discovery mechanism of ANS."
+        description="Resolve an Agent Name Service (ANSName) to retrieve its endpoint and CA-issued agent certificate. The Agent Registry signs this response."
         icon={SearchCode}
       />
 
@@ -99,7 +99,7 @@ export default function ANSResolutionPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Resolution Result</CardTitle>
-            <CardDescription>Details of the resolved agent, if found.</CardDescription>
+            <CardDescription>Details of the resolved agent, if found. Includes endpoint, agent's certificate, and registry's signature.</CardDescription>
           </CardHeader>
           <CardContent className="min-h-[200px]">
             {isLoading && (
@@ -126,16 +126,17 @@ export default function ANSResolutionPage() {
                   <p className="text-md break-all">{resolutionResult.endpoint}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground flex items-center"><FileSignature className="mr-2 h-4 w-4"/> Agent Registry Signature</Label>
+                  <Label className="text-sm font-medium text-muted-foreground flex items-center"><FileSignature className="mr-2 h-4 w-4"/> Agent Registry Signature (over ANSName, Endpoint, Agent Cert)</Label>
                   <ScrollArea className="h-20 mt-1">
                     <p className="text-xs bg-muted p-2 rounded-md break-all font-mono">{resolutionResult.signature}</p>
                   </ScrollArea>
-                   <p className="text-xs text-muted-foreground mt-1">Mock signature from Agent Registry over (Endpoint + Certificate).</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground flex items-center"><CheckCheck className="mr-2 h-4 w-4"/> Certificate (Mock PEM)</Label>
-                   <ScrollArea className="h-28 mt-1">
-                     <pre className="text-xs bg-muted p-2 rounded-md whitespace-pre-wrap break-all font-mono">{resolutionResult.certificatePem}</pre>
+                  <Label className="text-sm font-medium text-muted-foreground flex items-center"><FileBadge className="mr-2 h-4 w-4 text-green-600"/> Agent's Issued Certificate (Signed by CA)</Label>
+                   <ScrollArea className="h-40 mt-1">
+                     <pre className="text-xs bg-muted p-2 rounded-md whitespace-pre-wrap break-all font-mono">
+                        {JSON.stringify(resolutionResult.agentCertificate, null, 2)}
+                     </pre>
                    </ScrollArea>
                 </div>
               </div>
@@ -149,5 +150,3 @@ export default function ANSResolutionPage() {
     </>
   );
 }
-
-    
