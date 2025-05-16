@@ -48,50 +48,62 @@ export async function POST(request: NextRequest) {
     // Construct the ANSName from the provided components
     const ansName = constructANSName({ protocol, agentID, agentCapability, provider, version, extension });
 
-    const row = await db.get<AgentRegistration>('SELECT * FROM agents WHERE ansName = ?', ansName);
+    const row = await db.get<AgentRegistration & { agentCertificate: string; protocolExtensions: string; }>('SELECT * FROM agents WHERE ansName = ?', ansName);
 
     if (!row) {
       return NextResponse.json({ error: `ANSName '${ansName}' not found.` }, { status: 404 });
     }
 
-    // Deserialize agentCertificate and protocolExtensions
-    const targetAgent: AgentRegistration = {
-        ...row,
-        // Ensure agentCertificate and protocolExtensions are parsed from JSON strings
-        agentCertificate: typeof row.agentCertificate === 'string' ? JSON.parse(row.agentCertificate) : row.agentCertificate,
-        protocolExtensions: typeof row.protocolExtensions === 'string' ? JSON.parse(row.protocolExtensions) : row.protocolExtensions,
-    };
-    
-    let endpoint = targetAgent.protocolExtensions?.endpoint;
-    // Protocol-specific endpoint extraction (can be expanded)
-    if (targetAgent.protocol === 'mcp' && targetAgent.protocolExtensions?.mcpEndpoint) {
-        endpoint = targetAgent.protocolExtensions.mcpEndpoint;
-    } else if (targetAgent.protocol === 'a2a' && targetAgent.protocolExtensions?.a2aAgentCard?.endpoint) {
-        endpoint = targetAgent.protocolExtensions.a2aAgentCard.endpoint;
+    let parsedAgentCertificate: SignedCertificate;
+    let parsedProtocolExtensions: { [key: string]: any };
+
+    try {
+      parsedAgentCertificate = JSON.parse(row.agentCertificate);
+    } catch (e) {
+      console.error(`Failed to parse agentCertificate for ANSName '${ansName}':`, e);
+      return NextResponse.json({ error: `Corrupted certificate data for ANSName '${ansName}'.` }, { status: 500 });
     }
 
-    if (!endpoint || typeof endpoint !== 'string') {
-      return NextResponse.json({ error: `Endpoint not found or invalid in protocolExtensions for ANSName '${ansName}'.` }, { status: 404 });
+    try {
+      parsedProtocolExtensions = JSON.parse(row.protocolExtensions);
+    } catch (e) {
+      console.error(`Failed to parse protocolExtensions for ANSName '${ansName}':`, e);
+      return NextResponse.json({ error: `Corrupted protocolExtensions data for ANSName '${ansName}'.` }, { status: 500 });
+    }
+    
+    let endpoint: string | undefined;
+    if (parsedProtocolExtensions && typeof parsedProtocolExtensions === 'object') {
+      if (protocol === 'mcp' && typeof parsedProtocolExtensions.mcpEndpoint === 'string') {
+          endpoint = parsedProtocolExtensions.mcpEndpoint;
+      } else if (protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.endpoint === 'string') {
+          endpoint = parsedProtocolExtensions.a2aAgentCard.endpoint;
+      } else if (typeof parsedProtocolExtensions.endpoint === 'string') {
+          endpoint = parsedProtocolExtensions.endpoint;
+      }
+    }
+
+
+    if (!endpoint) {
+      return NextResponse.json({ error: `Endpoint not found or invalid in protocolExtensions for ANSName '${ansName}'. Ensure 'endpoint' (or protocol-specific e.g. 'mcpEndpoint') is defined.` }, { status: 404 });
     }
 
     const dataToSign = JSON.stringify({ 
-      ansName: targetAgent.ansName,
+      ansName: row.ansName, // Use ansName directly from the row as it's confirmed
       endpoint: endpoint, 
-      agentCertificate: targetAgent.agentCertificate 
+      agentCertificate: parsedAgentCertificate 
     });
     
-    const sign = crypto.createSign('SHA256');
-    sign.update(dataToSign);
-    sign.end();
+    const signInstance = crypto.createSign('SHA256');
+    signInstance.update(dataToSign);
+    signInstance.end();
     
-    // Explicitly create a KeyObject for signing
     const privateKeyObject = crypto.createPrivateKey(AGENT_REGISTRY_MOCK_PRIVATE_KEY);
-    const signatureByRegistry = sign.sign(privateKeyObject, 'base64');
+    const signatureByRegistry = signInstance.sign(privateKeyObject, 'base64');
 
     const responsePayload: ANSCapabilityResponse = {
-      ansName: targetAgent.ansName, // This is the fully constructed and resolved ANSName
+      ansName: row.ansName,
       endpoint: endpoint,
-      agentCertificate: targetAgent.agentCertificate,
+      agentCertificate: parsedAgentCertificate,
       signature: signatureByRegistry,
     };
 
