@@ -46,7 +46,7 @@ export default function CapabilityNegotiationPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.aiEvaluationMessage || `API Error: ${response.statusText}`);
+        throw new Error(errorData.aiEvaluationMessage || errorData.message || `API Error: ${response.statusText}`);
       }
 
       const data: NegotiationApiResponse = await response.json();
@@ -180,12 +180,12 @@ export default function CapabilityNegotiationPage() {
                 <div className="flex items-start space-x-3">
                   {result.matchStatus === 'success' && <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />}
                   {result.matchStatus === 'partial' && <Search className="h-5 w-5 text-yellow-500 mt-1 flex-shrink-0" />}
-                  {(result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') && result.service.id !== "system-error" && result.service.name !== "System" && <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />}
-                  {(result.service.id === "system-error" || result.service.name === "System") && <AlertTriangle className="h-5 w-5 text-destructive mt-1 flex-shrink-0" />}
+                  {(result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') && result.service.id !== "system-error" && result.service.name !== "System Message" && <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />}
+                  {(result.service.id === "system-error" || result.service.name === "System Message") && <AlertTriangle className="h-5 w-5 text-destructive mt-1 flex-shrink-0" />}
                   
                   <div className="flex-grow">
                     <CardTitle className="text-lg mb-1">{result.service.name || 'System Message'}</CardTitle>
-                    {result.service.name !== "System" && result.service.id !== "system-error" && (
+                    {result.service.name !== "System Message" && result.service.id !== "system-error" && (
                         <>
                             <p className="text-sm text-muted-foreground">Offered Capability: <Badge variant="secondary">{result.service.capability}</Badge></p>
                              <p className="text-xs text-muted-foreground mt-0.5">{result.service.description}</p>
@@ -193,7 +193,7 @@ export default function CapabilityNegotiationPage() {
                                 <Badge variant="outline">QoS: {result.service.qos.toFixed(2)}</Badge>
                                 <Badge variant="outline">Cost: ${result.service.cost}</Badge>
                                 <Badge variant="outline">Protocol: {result.service.protocol}</Badge>
-                                {result.service.ansEndpoint && (result.matchStatus === 'success' || result.matchStatus === 'partial') && (
+                                {result.service.ansEndpoint && result.matchStatus !== 'capability_mismatch' && (
                                   <Badge variant="outline" className="bg-primary/10 border-primary/50">
                                     <Share2 className="mr-1 h-3 w-3 text-primary" />
                                     ANS: {result.service.ansEndpoint}
@@ -205,7 +205,7 @@ export default function CapabilityNegotiationPage() {
                     <p className={`text-sm mt-2 font-medium ${
                         result.matchStatus === 'success' ? 'text-green-700' :
                         result.matchStatus === 'partial' ? 'text-yellow-700' :
-                        (result.service.id === "system-error" || result.service.name === "System" || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
+                        (result.service.id === "system-error" || result.service.name === "System Message" || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
                         'text-red-700'
                     }`}>{result.matchMessage}</p>
 
