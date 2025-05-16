@@ -1,8 +1,9 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import type { AgentRegistration, ANSCapabilityRequest, ANSCapabilityResponse, SignedCertificate } from '@/lib/types';
+import type { AgentRegistration, ANSCapabilityRequest, ANSCapabilityResponse, SignedCertificate, ANSNameParts } from '@/lib/types';
 import crypto from 'crypto';
 import { getDb } from '@/lib/db'; // Import the database utility
+import { z } from 'zod';
 
 // This is a MOCK private key for the Agent Registry to sign its responses.
 // In a real system, this would be securely managed.
@@ -12,17 +13,40 @@ AwEHoUQDQgAE8QyL8I1bW64M7Y/C8S0Z13/4Y2GJ0x4Cq23T0B+w5y1n32c5w0xJ
 aF8o/y0mZ6XfG8jZk2xVn8gX6n1M3A==
 -----END EC PRIVATE KEY-----`;
 
+// Schema for validating the resolution request body (aligns with paper's AgentCapabilityRequest)
+const resolutionRequestSchema = z.object({
+  requestType: z.literal("resolve"),
+  protocol: z.enum(["a2a", "mcp", "acp", "other"]),
+  agentID: z.string().min(1),
+  agentCapability: z.string().min(1),
+  provider: z.string().min(1),
+  version: z.string().regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/, "Version must be a valid Semantic Version"),
+  extension: z.string().optional(),
+});
+
+function constructANSName(parts: ANSNameParts): string {
+  let name = `${parts.protocol}://${parts.agentID}.${parts.agentCapability}.${parts.provider}.v${parts.version}`;
+  if (parts.extension && parts.extension.trim() !== "") {
+    name += `.${parts.extension.trim()}`;
+  }
+  return name;
+}
 
 export async function POST(request: NextRequest) {
   try {
     const db = await getDb();
-    const body = await request.json() as ANSCapabilityRequest;
+    const body = await request.json();
+    
+    const parsedBody = resolutionRequestSchema.safeParse(body);
 
-    if (body.requestType !== 'resolve' || !body.ansName) {
-      return NextResponse.json({ error: "Invalid request. Must be 'resolve' type with an ansName." }, { status: 400 });
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: "Invalid request data for ANS resolution.", details: parsedBody.error.format() }, { status: 400 });
     }
 
-    const { ansName } = body;
+    const { protocol, agentID, agentCapability, provider, version, extension } = parsedBody.data;
+
+    // Construct the ANSName from the provided components
+    const ansName = constructANSName({ protocol, agentID, agentCapability, provider, version, extension });
 
     const row = await db.get<AgentRegistration>('SELECT * FROM agents WHERE ansName = ?', ansName);
 
@@ -33,8 +57,9 @@ export async function POST(request: NextRequest) {
     // Deserialize agentCertificate and protocolExtensions
     const targetAgent: AgentRegistration = {
         ...row,
-        agentCertificate: JSON.parse(row.agentCertificate as unknown as string),
-        protocolExtensions: JSON.parse(row.protocolExtensions as unknown as string),
+        // Ensure agentCertificate and protocolExtensions are parsed from JSON strings
+        agentCertificate: typeof row.agentCertificate === 'string' ? JSON.parse(row.agentCertificate) : row.agentCertificate,
+        protocolExtensions: typeof row.protocolExtensions === 'string' ? JSON.parse(row.protocolExtensions) : row.protocolExtensions,
     };
     
     let endpoint = targetAgent.protocolExtensions?.endpoint;
@@ -61,7 +86,7 @@ export async function POST(request: NextRequest) {
     const signatureByRegistry = sign.sign(AGENT_REGISTRY_MOCK_PRIVATE_KEY, 'base64');
 
     const responsePayload: ANSCapabilityResponse = {
-      ansName: targetAgent.ansName,
+      ansName: targetAgent.ansName, // This is the fully constructed and resolved ANSName
       endpoint: endpoint,
       agentCertificate: targetAgent.agentCertificate,
       signature: signatureByRegistry,

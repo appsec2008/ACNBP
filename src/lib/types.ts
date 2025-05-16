@@ -77,12 +77,16 @@ export interface AgentRegistration extends ANSNameParts {
   timestamp: string; // ISO string representing the registration time.
 }
 
-// Schema for ANS Resolution Request (AgentCapabilityRequest from the paper)
-// Used when querying the ANS to resolve an ANSName.
-// For this prototype, we primarily use ansName for lookup.
+// Schema for ANS Resolution Request (AgentCapabilityRequest from the paper, Section 4)
+// Used when querying the ANS to resolve an ANSName by its components.
 export interface ANSCapabilityRequest {
   requestType: "resolve";
-  ansName: string; // The full ANSName to resolve
+  protocol: ANSProtocol;
+  agentID: string;
+  agentCapability: string;
+  provider: string;
+  version: string;
+  extension?: string;
 }
 
 // Schema for ANS Resolution Response (AgentCapabilityResponse from the paper)

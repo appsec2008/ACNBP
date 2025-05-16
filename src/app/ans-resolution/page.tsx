@@ -7,13 +7,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { ANSCapabilityRequest, ANSCapabilityResponse, SignedCertificate } from "@/lib/types";
-import { SearchCode, Link, ShieldAlert, CheckCheck, Loader2, FileSignature, Server, FileBadge } from "lucide-react";
+import type { ANSCapabilityRequest, ANSCapabilityResponse, ANSProtocol } from "@/lib/types";
+import { SearchCode, Link, ShieldAlert, Loader2, FileSignature, Server, FileBadge, Globe, Fingerprint, Layers, Package, Tag, Info } from "lucide-react";
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+// Helper component for form items
+const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, label: string, htmlFor: string, children: React.ReactNode}) => (
+  <div>
+    <Label htmlFor={htmlFor} className="flex items-center mb-1">
+      {Icon && <Icon className="mr-2 h-4 w-4 text-muted-foreground" />}
+      {label}
+    </Label>
+    {children}
+  </div>
+);
+
 export default function ANSResolutionPage() {
-  const [ansNameToResolve, setAnsNameToResolve] = useState("");
+  const [protocol, setProtocol] = useState<ANSProtocol | "">("a2a");
+  const [agentID, setAgentID] = useState("textProcessor");
+  const [agentCapability, setAgentCapability] = useState("DocumentTranslation");
+  const [provider, setProvider] = useState("AcmeCorp");
+  const [version, setVersion] = useState("1.0.0");
+  const [extension, setExtension] = useState("secure");
+
   const [resolutionResult, setResolutionResult] = useState<ANSCapabilityResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,15 +43,20 @@ export default function ANSResolutionPage() {
     setResolutionResult(null);
     setError(null);
 
-    if (!ansNameToResolve.trim()) {
-      toast({ title: "Input Required", description: "Please enter an ANSName to resolve.", variant: "destructive" });
+    if (!protocol || !agentID || !agentCapability || !provider || !version) {
+      toast({ title: "Input Required", description: "Please fill in all required ANSName components.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
 
     const requestPayload: ANSCapabilityRequest = {
       requestType: "resolve",
-      ansName: ansNameToResolve.trim(),
+      protocol: protocol as ANSProtocol,
+      agentID,
+      agentCapability,
+      provider,
+      version,
+      ...(extension && { extension }), // Conditionally add extension
     };
 
     try {
@@ -64,31 +87,47 @@ export default function ANSResolutionPage() {
     <>
       <PageHeader
         title="ANS Name Resolution"
-        description="Resolve an Agent Name Service (ANSName) to retrieve its endpoint and CA-issued agent certificate. The Agent Registry signs this response."
+        description="Resolve an Agent Name Service (ANSName) by its components to retrieve its endpoint and CA-issued agent certificate. The Agent Registry signs this response."
         icon={SearchCode}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="shadow-lg">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-1 shadow-lg">
           <form onSubmit={handleResolveANSName}>
             <CardHeader>
-              <CardTitle>Resolve ANSName</CardTitle>
-              <CardDescription>Enter the full ANSName to look up an agent.</CardDescription>
+              <CardTitle>Resolve ANSName Components</CardTitle>
+              <CardDescription>Enter the components of the ANSName to look up an agent.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div>
-                <Label htmlFor="ansNameToResolve">ANSName</Label>
-                <Input 
-                  id="ansNameToResolve" 
-                  placeholder="e.g., a2a://textProcessor.DocumentTranslation.AcmeCorp.v1.0.0" 
-                  value={ansNameToResolve}
-                  onChange={(e) => setAnsNameToResolve(e.target.value)}
-                  required 
-                />
-              </div>
+            <CardContent className="space-y-4">
+              <FormItem Icon={Globe} label="Protocol" htmlFor="protocol">
+                <Select value={protocol} onValueChange={(value) => setProtocol(value as ANSProtocol)} required>
+                  <SelectTrigger id="protocol"><SelectValue placeholder="Select Protocol" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a2a">a2a (Agent2Agent)</SelectItem>
+                    <SelectItem value="mcp">mcp (Model Context Protocol)</SelectItem>
+                    <SelectItem value="acp">acp (Agent Communication Protocol)</SelectItem>
+                    <SelectItem value="other">other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormItem>
+              <FormItem Icon={Fingerprint} label="Agent ID" htmlFor="agentID">
+                <Input id="agentID" placeholder="e.g., textProcessor" value={agentID} onChange={e => setAgentID(e.target.value)} required />
+              </FormItem>
+              <FormItem Icon={Layers} label="Agent Capability" htmlFor="agentCapability">
+                <Input id="agentCapability" placeholder="e.g., DocumentTranslation" value={agentCapability} onChange={e => setAgentCapability(e.target.value)} required />
+              </FormItem>
+              <FormItem Icon={Package} label="Provider" htmlFor="provider">
+                <Input id="provider" placeholder="e.g., AcmeCorp" value={provider} onChange={e => setProvider(e.target.value)} required />
+              </FormItem>
+              <FormItem Icon={Tag} label="Version" htmlFor="version">
+                <Input id="version" placeholder="e.g., 1.0.0 or 2.1.3-beta" value={version} onChange={e => setVersion(e.target.value)} required />
+              </FormItem>
+              <FormItem Icon={Info} label="Extension (Optional)" htmlFor="extension">
+                <Input id="extension" placeholder="e.g., hipaa, secure" value={extension} onChange={e => setExtension(e.target.value)} />
+              </FormItem>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || !protocol || !agentID || !agentCapability || !provider || !version}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SearchCode className="mr-2 h-4 w-4" />}
                 Resolve
               </Button>
@@ -96,7 +135,7 @@ export default function ANSResolutionPage() {
           </form>
         </Card>
 
-        <Card className="shadow-lg">
+        <Card className="md:col-span-2 shadow-lg">
           <CardHeader>
             <CardTitle>Resolution Result</CardTitle>
             <CardDescription>Details of the resolved agent, if found. Includes endpoint, agent's certificate, and registry's signature.</CardDescription>
@@ -142,7 +181,7 @@ export default function ANSResolutionPage() {
               </div>
             )}
             {!isLoading && !error && !resolutionResult && (
-              <p className="text-muted-foreground text-center pt-10">Enter an ANSName and click "Resolve" to see details here.</p>
+              <p className="text-muted-foreground text-center pt-10">Enter ANSName components and click "Resolve" to see details here.</p>
             )}
           </CardContent>
         </Card>
