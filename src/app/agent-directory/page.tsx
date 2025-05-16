@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, FormEvent } from 'react';
@@ -12,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import type { AgentRegistration } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
-const initialAgents: AgentRegistration[] = [
+const initialAgentsData: Omit<AgentRegistration, 'timestamp'> & { timestamp: string }[] = [
   { id: "agent1", name: "WeatherBot", address: "tcp://192.168.1.10:5555", capabilities: ["weather_forecast", "temperature_reading"], protocolExtensions: ["secure_comms_v1"], timestamp: new Date(Date.now() - 3600000).toISOString() },
   { id: "agent2", name: "NewsAggregator", address: "udp://news.example.com:1234", capabilities: ["news_fetch", "topic_summary"], protocolExtensions: [], timestamp: new Date(Date.now() - 7200000).toISOString() },
   { id: "agent3", name: "ImageProcessor", address: "http://imageproc.svc.cluster.local", capabilities: ["resize", "filter", "ocr"], protocolExtensions: ["batch_processing_v2"], timestamp: new Date().toISOString() },
@@ -30,10 +31,8 @@ export default function AgentDirectoryPage() {
   const [protocolExtensions, setProtocolExtensions] = useState("");
 
   useEffect(() => {
-    setAgents(initialAgents.map(agent => ({
-      ...agent,
-      timestamp: new Date(agent.timestamp).toLocaleString()
-    })));
+    // Initialize agents with ISO timestamps
+    setAgents(initialAgentsData);
   }, []);
 
   const handleRegisterAgent = (e: FormEvent) => {
@@ -53,7 +52,7 @@ export default function AgentDirectoryPage() {
       address: agentAddress,
       capabilities: capabilities.split(',').map(cap => cap.trim()).filter(cap => cap),
       protocolExtensions: protocolExtensions.split(',').map(ext => ext.trim()).filter(ext => ext),
-      timestamp: new Date().toLocaleString()
+      timestamp: new Date().toISOString() // Store as ISO string
     };
     setAgents(prevAgents => [newAgent, ...prevAgents]);
     toast({
@@ -72,6 +71,13 @@ export default function AgentDirectoryPage() {
     agent.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
     agent.capabilities.some(cap => cap.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  // Client-side state to prevent hydration mismatch for formatted dates
+  const [clientSideRendered, setClientSideRendered] = useState(false);
+  useEffect(() => {
+    setClientSideRendered(true);
+  }, []);
+
 
   return (
     <>
@@ -151,7 +157,9 @@ export default function AgentDirectoryPage() {
                            {agent.protocolExtensions.map(ext => <Badge key={ext} variant="outline">{ext}</Badge>)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{agent.timestamp}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {clientSideRendered ? new Date(agent.timestamp).toLocaleString() : agent.timestamp}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
