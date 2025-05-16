@@ -1,7 +1,7 @@
 
 # Agent Capability Negotiation and Binding Protocol (ACNBP) Platform
 
-**Author:** Ken Huang
+**Author:** Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff 
 
 ## Project Introduction
 
@@ -106,13 +106,12 @@ Please ensure your code is well-formatted and, if adding new features, consider 
 
 If you use this ACNBP Platform in your research or work, please consider citing the associated paper:
 
-Huang, K. ([Year of Paper]). *[Title of your arXiv Paper]*. arXiv preprint arXiv:[arXiv ID, e.g., 2401.12345]. Retrieved from [Full URL to your arXiv paper, e.g., https://arxiv.org/abs/2401.12345]
+Huang, Ken.  Vineeth Sai Narajala, Idan Habler, Akram Sheriff  (2025]). *[Title of your arXiv Paper]*. arXiv preprint arXiv:[arXiv ID, e.g., 2401.12345]. Retrieved from [Full URL to your arXiv paper, e.g., https://arxiv.org/abs/2401.12345]
 
-*(Please replace the bracketed placeholders with your specific paper details.)*
 
 You can also refer to this software implementation:
 
-Huang, K. (2024). *Agent Capability Negotiation and Binding Protocol (ACNBP) Platform* [Software]. Retrieved from [URL of this GitHub Repository, if public]
+Huang, Ken,   Vineeth Sai Narajala, Idan Habler, Akram Sheriff . *Agent Capability Negotiation and Binding Protocol (ACNBP) Platform* [Software]. Retrieved from [URL of this GitHub Repository, if public]
 
 ## License
 
