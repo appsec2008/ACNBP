@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { BotMessageSquare, Send, CheckCircle, XCircle, Search, ShieldQuestion, Star, FileText, Loader2, AlertTriangle } from "lucide-react";
+import { BotMessageSquare, Send, CheckCircle, XCircle, Search, ShieldQuestion, Star, FileText, Loader2, AlertTriangle, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,18 +51,16 @@ export default function CapabilityNegotiationPage() {
 
       const data: NegotiationApiResponse = await response.json();
       
-      // Sort results: success > partial > failed. Within same status, by AI score desc.
       const sortedResults = data.results.sort((a, b) => {
         const statusOrder = { 'success': 1, 'partial': 2, 'failed': 3, 'capability_mismatch': 4 };
         if (statusOrder[a.matchStatus] !== statusOrder[b.matchStatus]) {
           return statusOrder[a.matchStatus] - statusOrder[b.matchStatus];
         }
-        // If status is the same, sort by AI score if available (higher score first)
         if (a.aiScore !== undefined && b.aiScore !== undefined) {
           return b.aiScore - a.aiScore;
         }
-        if (a.aiScore !== undefined) return -1; // a has AI score, b doesn't
-        if (b.aiScore !== undefined) return 1;  // b has AI score, a doesn't
+        if (a.aiScore !== undefined) return -1;
+        if (b.aiScore !== undefined) return 1;
         return 0;
       });
       
@@ -89,7 +87,7 @@ export default function CapabilityNegotiationPage() {
         variant: "destructive",
       });
        setNegotiationResults([{
-            service: {id: "system-error", name: "System Error", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A"},
+            service: {id: "system-error", name: "System Error", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A", ansEndpoint: "N/A"},
             matchStatus: 'failed',
             matchMessage: `Negotiation process failed: ${error.message || "Unknown error"}`
         }]);
@@ -123,7 +121,7 @@ export default function CapabilityNegotiationPage() {
               />
             </div>
             <div>
-              <Label htmlFor="requiredQos">Minimum QoS ({requiredQos.toFixed(2)})</Label>
+              <Label htmlFor="requiredQos">Minimum QoS ({requiredQos.toFixed(2)}) (Set to 0 to ignore)</Label>
               <Slider
                 id="requiredQos"
                 min={0}
@@ -134,7 +132,7 @@ export default function CapabilityNegotiationPage() {
               />
             </div>
             <div>
-              <Label htmlFor="maxCost">Maximum Cost</Label>
+              <Label htmlFor="maxCost">Maximum Cost (Set high to ignore, e.g., 999999)</Label>
               <Input 
                 id="maxCost" 
                 type="number" 
@@ -195,6 +193,12 @@ export default function CapabilityNegotiationPage() {
                                 <Badge variant="outline">QoS: {result.service.qos.toFixed(2)}</Badge>
                                 <Badge variant="outline">Cost: ${result.service.cost}</Badge>
                                 <Badge variant="outline">Protocol: {result.service.protocol}</Badge>
+                                {result.service.ansEndpoint && (result.matchStatus === 'success' || result.matchStatus === 'partial') && (
+                                  <Badge variant="outline" className="bg-primary/10 border-primary/50">
+                                    <Share2 className="mr-1 h-3 w-3 text-primary" />
+                                    ANS: {result.service.ansEndpoint}
+                                  </Badge>
+                                )}
                             </div>
                         </>
                     )}
@@ -202,7 +206,7 @@ export default function CapabilityNegotiationPage() {
                         result.matchStatus === 'success' ? 'text-green-700' :
                         result.matchStatus === 'partial' ? 'text-yellow-700' :
                         (result.service.id === "system-error" || result.service.name === "System" || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
-                        'text-red-700' // Default fallback, though covered
+                        'text-red-700'
                     }`}>{result.matchMessage}</p>
 
                     {result.aiScore !== undefined && result.aiReasoning && (
@@ -232,3 +236,4 @@ export default function CapabilityNegotiationPage() {
     </>
   );
 }
+

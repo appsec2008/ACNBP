@@ -7,14 +7,14 @@ import type { AgentService, NegotiationResult, NegotiationRequestInput, Negotiat
 
 // Define available services here (simulating a database or service registry)
 const availableServices: AgentService[] = [
-  { id: "svc1", name: "ImageAnalysisPro", capability: "Image Recognition", description: "High-accuracy image recognition and tagging, supports various formats.", qos: 0.95, cost: 100, protocol: "ACNBP-Vision/1.0" },
-  { id: "svc2", name: "TextSummarizerAI", capability: "Text Summarization", description: "Advanced NLP for summarizing long documents, multiple languages.", qos: 0.90, cost: 75, protocol: "ACNBP-NLP/1.2" },
-  { id: "svc3", name: "DataCruncher Bot", capability: "Data Processing", description: "Scalable data processing and analytics, batch and stream modes.", qos: 0.88, cost: 120, protocol: "ACNBP-Data/1.0" },
-  { id: "svc4", name: "SecureStorageAgent", capability: "Secure Storage", description: "Encrypted and resilient data storage solution with audit trails.", qos: 0.99, cost: 50, protocol: "ACNBP-SecureStore/1.1" },
-  { id: "svc5", name: "ImageAnalysisBasic", capability: "Image Recognition Basic", description: "Basic image recognition service for general purposes, limited formats.", qos: 0.80, cost: 40, protocol: "ACNBP-Vision/1.0" },
-  { id: "svc6", name: "TranslationService", capability: "Language Translation", description: "Real-time translation for multiple language pairs.", qos: 0.92, cost: 60, protocol: "ACNBP-NLP/1.2" },
-  { id: "svc7", name: "TimeSeriesDB", capability: "Data Storage Time Series", description: "Optimized storage for time-series data with querying capabilities.", qos: 0.97, cost: 90, protocol: "ACNBP-Data/1.0" },
-  { id: "svc8", name: "Image Resolution Enhancer", capability: "Image Resolution Upscaling", description: "Upscales image resolution using AI.", qos: 0.85, cost: 150, protocol: "ACNBP-Vision/1.1" },
+  { id: "svc1", name: "ImageAnalysisPro", capability: "Image Recognition", description: "High-accuracy image recognition and tagging, supports various formats.", qos: 0.95, cost: 100, protocol: "ACNBP-Vision/1.0", ansEndpoint: "agent://image.pro.ans/service" },
+  { id: "svc2", name: "TextSummarizerAI", capability: "Text Summarization", description: "Advanced NLP for summarizing long documents, multiple languages.", qos: 0.90, cost: 75, protocol: "ACNBP-NLP/1.2", ansEndpoint: "agent://nlp.summarizer.ans/v2" },
+  { id: "svc3", name: "DataCruncher Bot", capability: "Data Processing", description: "Scalable data processing and analytics, batch and stream modes.", qos: 0.88, cost: 120, protocol: "ACNBP-Data/1.0", ansEndpoint: "tcp://10.0.1.5:8001" },
+  { id: "svc4", name: "SecureStorageAgent", capability: "Secure Storage", description: "Encrypted and resilient data storage solution with audit trails.", qos: 0.99, cost: 50, protocol: "ACNBP-SecureStore/1.1", ansEndpoint: "https://secure.storage.svc/api" },
+  { id: "svc5", name: "ImageAnalysisBasic", capability: "Image Recognition Basic", description: "Basic image recognition service for general purposes, limited formats.", qos: 0.80, cost: 40, protocol: "ACNBP-Vision/1.0", ansEndpoint: "agent://image.basic.ans/service" },
+  { id: "svc6", name: "TranslationService", capability: "Language Translation", description: "Real-time translation for multiple language pairs.", qos: 0.92, cost: 60, protocol: "ACNBP-NLP/1.2", ansEndpoint: "grpc://translator.services.local:50051" },
+  { id: "svc7", name: "TimeSeriesDB", capability: "Data Storage Time Series", description: "Optimized storage for time-series data with querying capabilities.", qos: 0.97, cost: 90, protocol: "ACNBP-Data/1.0", ansEndpoint: "tsdb://timeseries.internal:9090" },
+  { id: "svc8", name: "Image Resolution Enhancer", capability: "Image Resolution Upscaling", description: "Upscales image resolution using AI.", qos: 0.85, cost: 150, protocol: "ACNBP-Vision/1.1", ansEndpoint: "agent://image.upscaler.ans/pro" },
 ];
 
 function normalizeCapability(capability: string): string {
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       // 1. Capability Check (Fuzzy & Optional)
       if (!normalizedDesiredCapability) {
         capabilityMatched = true; // No specific capability desired, so all services pass this check
+        messages.push("Capability requirement not specified.");
       } else {
         const normalizedServiceCapability = normalizeCapability(service.capability);
         if (normalizedServiceCapability.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(normalizedServiceCapability)) {
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
             qosCheckResult = 'not_met';
           }
         } else {
-          messages.push("QoS requirement not specified or ignored.");
+          messages.push("QoS requirement ignored by user setting.");
         }
 
         // 3. Cost Check
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
             costCheckResult = 'not_met';
           }
         } else {
-           messages.push("Maximum cost not specified or set very high.");
+           messages.push("Maximum cost requirement ignored by user setting.");
         }
         
         // 4. Determine overall match status
@@ -104,9 +105,7 @@ export async function POST(request: NextRequest) {
         matchMessage: messages.join(' '),
       });
       
-      // Only add to AI evaluation if capability matches (or not specified)
-      // and it's not a hard fail on specified QoS/Cost
-      if (capabilityMatched && serviceMatchStatus !== 'failed') {
+      if (capabilityMatched && serviceMatchStatus !== 'failed' && serviceMatchStatus !== 'capability_mismatch') {
          offersForAI.push({
           id: service.id,
           description: service.description,
@@ -118,7 +117,6 @@ export async function POST(request: NextRequest) {
     });
     
     // Filter out results that are a capability mismatch IF a capability was specified.
-    // offersForAI already considers this.
     const finalFilteredResults = negotiationResults.filter(result => 
         normalizedDesiredCapability ? result.matchStatus !== 'capability_mismatch' : true
     );
@@ -128,8 +126,6 @@ export async function POST(request: NextRequest) {
 
     if (securityRequirements && securityRequirements.trim() !== "") {
       const candidatesForAIProcessing = offersForAI.filter(offer => {
-        // Ensure this offer is actually in finalFilteredResults (i.e., not 'capability_mismatch' if DC was specified)
-        // and wasn't a hard fail on QoS/Cost if those were specified.
         const correspondingResult = finalFilteredResults.find(r => r.service.id === offer.id);
         return correspondingResult && correspondingResult.matchStatus !== 'failed' && correspondingResult.matchStatus !== 'capability_mismatch';
       });
@@ -143,7 +139,6 @@ export async function POST(request: NextRequest) {
           };
           const aiEvaluations: EvaluateOffersOutput = await evaluateOffers(aiInput);
 
-          // Merge AI results
           aiEvaluations.forEach(aiEval => {
             const resultToUpdate = finalFilteredResults.find(r => r.service.id === aiEval.id);
             if (resultToUpdate) {
@@ -159,11 +154,10 @@ export async function POST(request: NextRequest) {
           aiEvaluationMessage = "An error occurred during AI evaluation. Results shown without AI scores for some/all offers.";
         }
       } else if (offersForAI.length > 0 && candidatesForAIProcessing.length === 0) {
-        // This case means there were initial candidates, but none survived post-filtering for AI.
         aiEvaluationStatus = 'skipped_no_candidates';
         aiEvaluationMessage = "AI evaluation skipped: No suitable candidates after initial filtering met AI evaluation criteria.";
       } 
-       else { // offersForAI.length === 0
+       else { 
         aiEvaluationStatus = 'skipped_no_candidates';
         aiEvaluationMessage = "AI evaluation skipped: No offers met the basic criteria to be considered for AI evaluation.";
       }
@@ -173,14 +167,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (finalFilteredResults.length === 0 && normalizedDesiredCapability) {
-         finalFilteredResults.push({ // Use finalFilteredResults to add this message
-            service: {id: "system", name: "System Message", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A"},
-            matchStatus: 'failed', // or a more specific status like 'no_match'
+         finalFilteredResults.push({ 
+            service: {id: "system", name: "System Message", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A", ansEndpoint: "N/A"},
+            matchStatus: 'failed', 
             matchMessage: "No agents found matching the desired capability and other criteria after filtering."
         });
     } else if (finalFilteredResults.length === 0 && !normalizedDesiredCapability) {
          finalFilteredResults.push({
-            service: {id: "system", name: "System Message", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A"},
+            service: {id: "system", name: "System Message", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A", ansEndpoint: "N/A"},
             matchStatus: 'failed',
             matchMessage: "No agents available in the system or none matched unspecified criteria."
         });

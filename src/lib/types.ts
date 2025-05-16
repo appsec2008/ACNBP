@@ -8,6 +8,7 @@ export interface AgentService {
   qos: number; // 0-1 (Quality of Service)
   cost: number;
   protocol: string;
+  ansEndpoint: string; // Added: Agent Name Service endpoint or address
 }
 
 // Result item for capability negotiation, returned by API to client.
@@ -68,3 +69,4 @@ export interface EvaluatedOfferFromAI {
   score: number;
   reasoning: string;
 }
+
