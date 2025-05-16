@@ -7,11 +7,21 @@ import { z } from 'zod';
 
 // This is a MOCK private key for the Agent Registry to sign its responses.
 // In a real system, this would be securely managed.
-const AGENT_REGISTRY_MOCK_PRIVATE_KEY = `-----BEGIN EC PRIVATE KEY-----
+const AGENT_REGISTRY_MOCK_PRIVATE_KEY_PEM = `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIPDRg0g9a01953h6n/P9A58PG0xMhAyM9qPTmH0tL2B0oAoGCCqGSM49
 AwEHoUQDQgAE8QyL8I1bW64M7Y/C8S0Z13/4Y2GJ0x4Cq23T0B+w5y1n32c5w0xJ
 aF8o/y0mZ6XfG8jZk2xVn8gX6n1M3A==
 -----END EC PRIVATE KEY-----`;
+let agentRegistryPrivateKey: crypto.KeyObject | null = null;
+if (!agentRegistryPrivateKey) {
+    try {
+        agentRegistryPrivateKey = crypto.createPrivateKey(AGENT_REGISTRY_MOCK_PRIVATE_KEY_PEM);
+    } catch (e) {
+        console.error("Failed to create private key object for Agent Registry:", e);
+        // Handle error appropriately, maybe this should be a fatal error for the server
+    }
+}
+
 
 // Schema for validating the resolution request body (aligns with paper's AgentCapabilityRequest)
 const resolutionRequestSchema = z.object({
@@ -87,24 +97,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Endpoint not found or invalid in protocolExtensions for ANSName '${ansName}'. Ensure 'endpoint' (or protocol-specific e.g. 'mcpEndpoint') is defined.` }, { status: 404 });
     }
 
-    const dataToSign = JSON.stringify({ 
-      ansName: row.ansName, // Use ansName directly from the row as it's confirmed
-      endpoint: endpoint, 
-      agentCertificate: parsedAgentCertificate 
-    });
+    // Temporarily removing Agent Registry's own signature for simpler testing
+    // const dataToSign = JSON.stringify({ 
+    //   ansName: row.ansName, // Use ansName directly from the row as it's confirmed
+    //   endpoint: endpoint, 
+    //   agentCertificate: parsedAgentCertificate 
+    // });
     
-    const signInstance = crypto.createSign('SHA256');
-    signInstance.update(dataToSign);
-    signInstance.end();
+    // const signInstance = crypto.createSign('SHA256');
+    // signInstance.update(dataToSign);
+    // signInstance.end();
     
-    const privateKeyObject = crypto.createPrivateKey(AGENT_REGISTRY_MOCK_PRIVATE_KEY);
-    const signatureByRegistry = signInstance.sign(privateKeyObject, 'base64');
+    // let signatureByRegistry: string | undefined = undefined;
+    // if (agentRegistryPrivateKey) {
+    //   signatureByRegistry = signInstance.sign(agentRegistryPrivateKey, 'base64');
+    // } else {
+    //   console.warn("Agent Registry private key not available for signing resolution response.");
+    // }
 
     const responsePayload: ANSCapabilityResponse = {
       ansName: row.ansName,
       endpoint: endpoint,
       agentCertificate: parsedAgentCertificate,
-      signature: signatureByRegistry,
+      // signature: signatureByRegistry, // Temporarily removed
     };
 
     return NextResponse.json(responsePayload);

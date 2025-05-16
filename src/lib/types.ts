@@ -95,7 +95,7 @@ export interface ANSCapabilityResponse {
   ansName: string; // The ANSName that was resolved.
   endpoint: string; // The resolved agent endpoint (e.g., URL, service binding from protocolExtensions)
   agentCertificate: SignedCertificate; // The agent's CA-issued certificate.
-  signature: string; // A signature from the Agent Registry over the (Endpoint + AgentCertificate + ANSName) data, proving authenticity of this resolution response.
+  signature?: string; // Optional: A signature from the Agent Registry over the (Endpoint + AgentCertificate + ANSName) data, proving authenticity of this resolution response.
 }
 
 
@@ -123,3 +123,4 @@ export interface EvaluatedOfferFromAI {
   score: number;
   reasoning: string;
 }
+

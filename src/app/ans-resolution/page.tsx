@@ -138,7 +138,7 @@ export default function ANSResolutionPage() {
         <Card className="md:col-span-2 shadow-lg">
           <CardHeader>
             <CardTitle>Resolution Result</CardTitle>
-            <CardDescription>Details of the resolved agent, if found. Includes endpoint, agent's certificate, and registry's signature.</CardDescription>
+            <CardDescription>Details of the resolved agent, if found. Includes endpoint, agent's certificate, and registry's signature (if provided).</CardDescription>
           </CardHeader>
           <CardContent className="min-h-[200px]">
             {isLoading && (
@@ -164,12 +164,14 @@ export default function ANSResolutionPage() {
                   <Label className="text-sm font-medium text-muted-foreground flex items-center"><Link className="mr-2 h-4 w-4"/> Endpoint</Label>
                   <p className="text-md break-all">{resolutionResult.endpoint}</p>
                 </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground flex items-center"><FileSignature className="mr-2 h-4 w-4"/> Agent Registry Signature (over ANSName, Endpoint, Agent Cert)</Label>
-                  <ScrollArea className="h-20 mt-1">
-                    <p className="text-xs bg-muted p-2 rounded-md break-all font-mono">{resolutionResult.signature}</p>
-                  </ScrollArea>
-                </div>
+                {resolutionResult.signature && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground flex items-center"><FileSignature className="mr-2 h-4 w-4"/> Agent Registry Signature (over ANSName, Endpoint, Agent Cert)</Label>
+                    <ScrollArea className="h-20 mt-1">
+                      <p className="text-xs bg-muted p-2 rounded-md break-all font-mono">{resolutionResult.signature}</p>
+                    </ScrollArea>
+                  </div>
+                )}
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground flex items-center"><FileBadge className="mr-2 h-4 w-4 text-green-600"/> Agent's Issued Certificate (Signed by CA)</Label>
                    <ScrollArea className="h-40 mt-1">
@@ -189,3 +191,4 @@ export default function ANSResolutionPage() {
     </>
   );
 }
+
