@@ -1,7 +1,8 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import type { AgentRegistration, ANSCapabilityRequest, ANSCapabilityResponse, SignedCertificate } from '@/lib/types';
-import crypto from 'crypto'; // For mock signing
+import crypto from 'crypto';
+import { getDb } from '@/lib/db'; // Import the database utility
 
 // This is a MOCK private key for the Agent Registry to sign its responses.
 // In a real system, this would be securely managed.
@@ -14,6 +15,7 @@ aF8o/y0mZ6XfG8jZk2xVn8gX6n1M3A==
 
 export async function POST(request: NextRequest) {
   try {
+    const db = await getDb();
     const body = await request.json() as ANSCapabilityRequest;
 
     if (body.requestType !== 'resolve' || !body.ansName) {
@@ -22,25 +24,18 @@ export async function POST(request: NextRequest) {
 
     const { ansName } = body;
 
-    let agentList: AgentRegistration[];
-    try {
-        const fullUrl = new URL('/api/agent-registry', request.url);
-        const registryResponse = await fetch(fullUrl.toString());
-        if (!registryResponse.ok) {
-            console.error("Failed to fetch from /api/agent-registry:", registryResponse.status, await registryResponse.text());
-            throw new Error(`Failed to fetch agent list from registry (status: ${registryResponse.status})`);
-        }
-        agentList = await registryResponse.json();
-    } catch (e: any) {
-        console.error("Error fetching agent list:", e);
-        return NextResponse.json({ error: `Could not contact agent registry: ${e.message}` }, { status: 503 });
-    }
+    const row = await db.get<AgentRegistration>('SELECT * FROM agents WHERE ansName = ?', ansName);
 
-    const targetAgent = agentList.find(agent => agent.ansName === ansName);
-
-    if (!targetAgent) {
+    if (!row) {
       return NextResponse.json({ error: `ANSName '${ansName}' not found.` }, { status: 404 });
     }
+
+    // Deserialize agentCertificate and protocolExtensions
+    const targetAgent: AgentRegistration = {
+        ...row,
+        agentCertificate: JSON.parse(row.agentCertificate as unknown as string),
+        protocolExtensions: JSON.parse(row.protocolExtensions as unknown as string),
+    };
     
     let endpoint = targetAgent.protocolExtensions?.endpoint;
     // Protocol-specific endpoint extraction (can be expanded)
@@ -54,12 +49,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Endpoint not found or invalid in protocolExtensions for ANSName '${ansName}'.` }, { status: 404 });
     }
 
-    // Data to be signed by the Agent Registry's private key
-    // This signature attests that the registry provides this endpoint and certificate for this ANSName.
     const dataToSign = JSON.stringify({ 
       ansName: targetAgent.ansName,
       endpoint: endpoint, 
-      agentCertificate: targetAgent.agentCertificate // Include the full agent certificate object
+      agentCertificate: targetAgent.agentCertificate 
     });
     
     const sign = crypto.createSign('SHA256');
@@ -70,8 +63,8 @@ export async function POST(request: NextRequest) {
     const responsePayload: ANSCapabilityResponse = {
       ansName: targetAgent.ansName,
       endpoint: endpoint,
-      agentCertificate: targetAgent.agentCertificate, // Return the agent's issued certificate
-      signature: signatureByRegistry, // Signature from the Agent Registry over this response
+      agentCertificate: targetAgent.agentCertificate,
+      signature: signatureByRegistry,
     };
 
     return NextResponse.json(responsePayload);
