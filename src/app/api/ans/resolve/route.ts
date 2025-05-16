@@ -83,7 +83,10 @@ export async function POST(request: NextRequest) {
     const sign = crypto.createSign('SHA256');
     sign.update(dataToSign);
     sign.end();
-    const signatureByRegistry = sign.sign(AGENT_REGISTRY_MOCK_PRIVATE_KEY, 'base64');
+    
+    // Explicitly create a KeyObject for signing
+    const privateKeyObject = crypto.createPrivateKey(AGENT_REGISTRY_MOCK_PRIVATE_KEY);
+    const signatureByRegistry = sign.sign(privateKeyObject, 'base64');
 
     const responsePayload: ANSCapabilityResponse = {
       ansName: targetAgent.ansName, // This is the fully constructed and resolved ANSName
@@ -103,3 +106,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
