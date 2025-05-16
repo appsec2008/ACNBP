@@ -6,6 +6,7 @@ import { getCACryptoKeys } from '../ca/route'; // Adjust path as necessary
 interface CertificatePayload {
   subjectAgentId: string;
   subjectPublicKey: string;
+  subjectAnsEndpoint: string; // Added ANS endpoint
   issuer: string;
   validFrom: string;
   validTo: string;
@@ -20,9 +21,9 @@ const certificateStore: { [agentId: string]: SignedCertificate } = {};
 
 export async function POST(request: Request) {
   try {
-    const { agentId, agentPublicKey } = await request.json();
-    if (!agentId || !agentPublicKey) {
-      return NextResponse.json({ error: 'Agent ID and Public Key are required' }, { status: 400 });
+    const { agentId, agentPublicKey, agentAnsEndpoint } = await request.json();
+    if (!agentId || !agentPublicKey || !agentAnsEndpoint) {
+      return NextResponse.json({ error: 'Agent ID, Public Key, and ANS Endpoint are required' }, { status: 400 });
     }
 
     const caCryptoKeys = getCACryptoKeys();
@@ -37,7 +38,8 @@ export async function POST(request: Request) {
     const certificatePayload: CertificatePayload = {
       subjectAgentId: agentId,
       subjectPublicKey: agentPublicKey,
-      issuer: "DemoCA", // Could also use CA's public key hash or name
+      subjectAnsEndpoint: agentAnsEndpoint, // Include endpoint in payload
+      issuer: "DemoCA", 
       validFrom: validFrom.toISOString(),
       validTo: validTo.toISOString(),
     };
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
     };
 
     certificateStore[agentId] = signedCertificate;
-    console.log(`Certificate issued for agent: ${agentId}`);
+    console.log(`Certificate issued for agent: ${agentId}, including ANS endpoint: ${agentAnsEndpoint}`);
 
     return NextResponse.json(signedCertificate);
   } catch (error) {

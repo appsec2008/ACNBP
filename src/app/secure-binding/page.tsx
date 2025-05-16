@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, Lock, KeyRound, CheckCircle2, AlertTriangle, FileJson, MessageSquare, Fingerprint, Loader2, ExternalLink } from "lucide-react";
+import { ShieldCheck, Lock, KeyRound, CheckCircle2, AlertTriangle, FileJson, MessageSquare, Fingerprint, Loader2, ExternalLink, Globe } from "lucide-react"; // Added Globe
 import { Button } from "@/components/ui/button";
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -24,13 +24,14 @@ interface BindingLogEntry {
 interface AgentState {
   id: string;
   publicKey: string | null;
-  certificate: any | null; // Store the full certificate object
+  ansEndpoint: string | null; // Added ANS Endpoint
+  certificate: any | null; 
 }
 
 export default function SecureBindingPage() {
   const [caPublicKey, setCaPublicKey] = useState<string | null>(null);
-  const [agentA, setAgentA] = useState<AgentState>({ id: "AgentA", publicKey: null, certificate: null });
-  const [agentB, setAgentB] = useState<AgentState>({ id: "AgentB", publicKey: null, certificate: null });
+  const [agentA, setAgentA] = useState<AgentState>({ id: "AgentA", publicKey: null, ansEndpoint: null, certificate: null });
+  const [agentB, setAgentB] = useState<AgentState>({ id: "AgentB", publicKey: null, ansEndpoint: null, certificate: null });
   const [messageToSign, setMessageToSign] = useState<string>("Hello Agent B, let's bind securely!");
   const [signedMessage, setSignedMessage] = useState<{ message: string; signature: string; certificate: any } | null>(null);
   
@@ -83,9 +84,18 @@ export default function SecureBindingPage() {
     }
   };
 
-  const initializeAgent = async (agentId: 'AgentA' | 'AgentB', loadingKeyPrefix: string) => {
-    const agentSetter = agentId === 'AgentA' ? setAgentA : setAgentB;
+  const initializeAgent = async (agentIdentifier: 'AgentA' | 'AgentB', loadingKeyPrefix: string) => {
+    const agentSetter = agentIdentifier === 'AgentA' ? setAgentA : setAgentB;
+    const agentId = agentIdentifier; // Use 'AgentA' or 'AgentB' as the ID
     
+    // Define mock ANS endpoints
+    const mockAnsEndpoint = agentIdentifier === 'AgentA' 
+      ? "a2a://ClientAgent.secureComm.ACNBP.v1.0.0.main" 
+      : "a2a://ServerAgent.secureComm.ACNBP.v1.0.0.main";
+
+    agentSetter(prev => ({ ...prev, id: agentId, ansEndpoint: mockAnsEndpoint }));
+    logEntry(`Initialize ${agentId}`, `${agentId} assigned ANS Endpoint: ${mockAnsEndpoint}`, 'info', Globe);
+
     const keyData = await handleApiCall(
       '/api/secure-binding/agent-keys', 
       'POST', 
@@ -101,10 +111,10 @@ export default function SecureBindingPage() {
       const certData = await handleApiCall(
         '/api/secure-binding/issue-certificate',
         'POST',
-        { agentId, agentPublicKey: keyData.publicKey },
-        `2b. Issue ${agentId} Certificate`,
+        { agentId, agentPublicKey: keyData.publicKey, agentAnsEndpoint: mockAnsEndpoint }, // Pass ANS endpoint
+        `2b. Issue ${agentId} Certificate (with ANS Endpoint)`,
         `${loadingKeyPrefix}Cert`,
-        `${agentId} certificate issued.`,
+        `${agentId} certificate issued with ANS endpoint.`,
         `Failed to issue ${agentId} certificate.`
       );
       if (certData) {
@@ -115,8 +125,8 @@ export default function SecureBindingPage() {
 
   const agentASignMessage = async () => {
     if (!agentA.certificate || !messageToSign) {
-      toast({ title: "Missing Info", description: "Agent A must be initialized and message must be provided.", variant: "destructive" });
-      logEntry("4. Sign Message", "Agent A not initialized or message empty.", 'error', AlertTriangle);
+      toast({ title: "Missing Info", description: "Agent A must be initialized (keys & cert) and message must be provided.", variant: "destructive" });
+      logEntry("4. Sign Message", "Agent A not fully initialized or message empty.", 'error', AlertTriangle);
       return;
     }
     const data = await handleApiCall(
@@ -151,21 +161,21 @@ export default function SecureBindingPage() {
       { 
         message: signedMessage.message, 
         signature: signedMessage.signature,
-        certificateStringified: JSON.stringify(signedMessage.certificate)
+        certificateStringified: JSON.stringify(signedMessage.certificate) // Certificate now includes ANS endpoint
       },
-      `5. ${agentB.id} Verifies Message`,
+      `5. ${agentB.id} Verifies Message & Certificate`,
       'verifyMsg',
       `Verification attempt complete by ${agentB.id}.`,
       `Verification failed.`
     );
-    // Log details are already handled by handleApiCall
+    // Log details are already handled by handleApiCall based on verificationResult content
   };
 
   return (
     <>
       <PageHeader
         title="Secure Binding Protocol Demonstration"
-        description="Establish a secure channel using cryptographic operations. This demo uses backend APIs for key generation, certificate issuance (signed JSON), and digital signature verification."
+        description="Establish a secure channel. CA signs agent certificates (ID, Public Key, ANS Endpoint). Agents sign messages. Verification involves checking certificate against CA and message signature against certificate's public key."
         icon={ShieldCheck}
       />
 
@@ -211,7 +221,7 @@ export default function SecureBindingPage() {
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader>
             <CardTitle>Binding Log & Cryptographic Artifacts</CardTitle>
-            <CardDescription>Tracks the steps and shows (mock) cryptographic data.</CardDescription>
+            <CardDescription>Tracks the steps and shows cryptographic data (e.g., Public Keys, Signed Certificates including ANS Endpoints).</CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px] bg-muted/30 rounded-md p-1">
