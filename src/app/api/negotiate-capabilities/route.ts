@@ -7,14 +7,86 @@ import type { AgentService, NegotiationResult, NegotiationRequestInput, Negotiat
 
 // Define available services here (simulating a database or service registry)
 const availableServices: AgentService[] = [
-  { id: "svc1", name: "ImageAnalysisPro", capability: "Image Recognition", description: "High-accuracy image recognition and tagging, supports various formats.", qos: 0.95, cost: 100, protocol: "ACNBP-Vision/1.0", ansEndpoint: "agent://image.pro.ans/service" },
-  { id: "svc2", name: "TextSummarizerAI", capability: "Text Summarization", description: "Advanced NLP for summarizing long documents, multiple languages.", qos: 0.90, cost: 75, protocol: "ACNBP-NLP/1.2", ansEndpoint: "agent://nlp.summarizer.ans/v2" },
-  { id: "svc3", name: "DataCruncher Bot", capability: "Data Processing", description: "Scalable data processing and analytics, batch and stream modes.", qos: 0.88, cost: 120, protocol: "ACNBP-Data/1.0", ansEndpoint: "tcp://10.0.1.5:8001" },
-  { id: "svc4", name: "SecureStorageAgent", capability: "Secure Storage", description: "Encrypted and resilient data storage solution with audit trails.", qos: 0.99, cost: 50, protocol: "ACNBP-SecureStore/1.1", ansEndpoint: "https://secure.storage.svc/api" },
-  { id: "svc5", name: "ImageAnalysisBasic", capability: "Image Recognition Basic", description: "Basic image recognition service for general purposes, limited formats.", qos: 0.80, cost: 40, protocol: "ACNBP-Vision/1.0", ansEndpoint: "agent://image.basic.ans/service" },
-  { id: "svc6", name: "TranslationService", capability: "Language Translation", description: "Real-time translation for multiple language pairs.", qos: 0.92, cost: 60, protocol: "ACNBP-NLP/1.2", ansEndpoint: "grpc://translator.services.local:50051" },
-  { id: "svc7", name: "TimeSeriesDB", capability: "Data Storage Time Series", description: "Optimized storage for time-series data with querying capabilities.", qos: 0.97, cost: 90, protocol: "ACNBP-Data/1.0", ansEndpoint: "tsdb://timeseries.internal:9090" },
-  { id: "svc8", name: "Image Resolution Enhancer", capability: "Image Resolution Upscaling", description: "Upscales image resolution using AI.", qos: 0.85, cost: 150, protocol: "ACNBP-Vision/1.1", ansEndpoint: "agent://image.upscaler.ans/pro" },
+  { 
+    id: "svc1", 
+    name: "ImageAnalysisPro", 
+    capability: "Image Recognition", 
+    description: "High-accuracy image recognition and tagging, supports various formats.", 
+    qos: 0.95, 
+    cost: 100, 
+    protocol: "ACNBP-Vision/1.0", 
+    ansEndpoint: "a2a://ImagePro.ImageRecognition.VisionCorp.v1.2.0.gpu-optimized" 
+  },
+  { 
+    id: "svc2", 
+    name: "TextSummarizerAI", 
+    capability: "Text Summarization", 
+    description: "Advanced NLP for summarizing long documents, multiple languages.", 
+    qos: 0.90, 
+    cost: 75, 
+    protocol: "ACNBP-NLP/1.2", 
+    ansEndpoint: "mcp://TextSumAI.TextSummarization.NLPHub.v2.0.1.multilang" 
+  },
+  { 
+    id: "svc3", 
+    name: "DataCruncher Bot", 
+    capability: "Data Processing", 
+    description: "Scalable data processing and analytics, batch and stream modes.", 
+    qos: 0.88, 
+    cost: 120, 
+    protocol: "ACNBP-Data/1.0", 
+    ansEndpoint: "acp://DataBot.DataProcessing.ComputeCorp.v1.0.0.batch" 
+  },
+  { 
+    id: "svc4", 
+    name: "SecureStorageAgent", 
+    capability: "Secure Storage", 
+    description: "Encrypted and resilient data storage solution with audit trails.", 
+    qos: 0.99, 
+    cost: 50, 
+    protocol: "ACNBP-SecureStore/1.1", 
+    ansEndpoint: "a2a://SecureStore.SecureStorage.VaultInc.v1.1.0.e2ee" 
+  },
+  { 
+    id: "svc5", 
+    name: "ImageAnalysisBasic", 
+    capability: "Image Recognition Basic", 
+    description: "Basic image recognition service for general purposes, limited formats.", 
+    qos: 0.80, 
+    cost: 40, 
+    protocol: "ACNBP-Vision/1.0", 
+    ansEndpoint: "a2a://ImageBasic.ImageRecognition.VisionCorp.v1.0.0.standard" 
+  },
+  { 
+    id: "svc6", 
+    name: "TranslationService", 
+    capability: "Language Translation", 
+    description: "Real-time translation for multiple language pairs.", 
+    qos: 0.92, 
+    cost: 60, 
+    protocol: "ACNBP-NLP/1.2", 
+    ansEndpoint: "mcp://Translator.LanguageTranslation.LinguaTech.v1.5.0.realtime" 
+  },
+  { 
+    id: "svc7", 
+    name: "TimeSeriesDB", 
+    capability: "Data Storage Time Series", 
+    description: "Optimized storage for time-series data with querying capabilities.", 
+    qos: 0.97, 
+    cost: 90, 
+    protocol: "ACNBP-Data/1.0", 
+    ansEndpoint: "acp://TSDB.DataStorageTimeSeries.DataStack.v2.3.1.fastquery" 
+  },
+  { 
+    id: "svc8", 
+    name: "Image Resolution Enhancer", 
+    capability: "Image Resolution Upscaling", 
+    description: "Upscales image resolution using AI.", 
+    qos: 0.85, 
+    cost: 150, 
+    protocol: "ACNBP-Vision/1.1", 
+    ansEndpoint: "a2a://ImageUpscaler.ImageResolutionUpscaling.PixelPerfect.v1.0.0.ai-enhanced" 
+  },
 ];
 
 function normalizeCapability(capability: string): string {
