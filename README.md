@@ -1,7 +1,7 @@
 
 # Agent Capability Negotiation and Binding Protocol (ACNBP) Platform
 
-**Author:** Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff 
+**Author:** Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff
 
 ## Project Introduction
 
@@ -13,6 +13,40 @@ This project is a Next.js web application designed to demonstrate and explore th
 *   **AI-Powered Offer Evaluation:** Leveraging Generative AI (via Genkit and Gemini) to evaluate and score capability offers from different agents based on complex criteria, including security requirements.
 
 The platform aims to provide a tangible way to understand the dynamics of agent interactions within a structured protocol.
+
+## Important: Demo Status and Future Improvements
+
+**This project is currently a demonstration and proof-of-concept. It is NOT production-ready.**
+
+Significant work is required to address security, scalability, and robustness before it could be considered for any real-world deployment. Key areas for future improvement include:
+
+### Security Enhancements:
+1.  **Secret Management:**
+    *   Currently, API keys (like `GOOGLE_API_KEY`) are managed via `.env` files, and cryptographic keys (e.g., for the mock CA) are generated and stored in-memory or hardcoded.
+    *   **Improvement:** Integrate a dedicated secret management solution (e.g., HashiCorp Vault, AWS Secrets Manager, Google Secret Manager) for securely storing and accessing all private keys, API keys, and other sensitive credentials.
+2.  **Database Security (if RDBMS is used):**
+    *   If evolving beyond SQLite to a production RDBMS, implement robust defenses against SQL injection vulnerabilities (e.g., parameterized queries, ORM best practices).
+3.  **DDoS Attack Mitigation:**
+    *   Implement rate limiting on API endpoints to prevent abuse and mitigate Denial of Service attacks.
+    *   Consider using Web Application Firewalls (WAFs) and other infrastructure-level protections.
+4.  **Comprehensive PKI Implementation:**
+    *   The current CA and certificate issuance are highly simplified. A production system would require a robust PKI with proper certificate lifecycle management (revocation via CRL/OCSP), hardware security modules (HSMs) for CA keys, and adherence to PKI best practices.
+5.  **Input Validation and Sanitization:**
+    *   Enhance input validation on all API endpoints and user-facing forms to prevent common web vulnerabilities.
+
+### Scalability and Robustness:
+1.  **Production-Grade Database:**
+    *   Replace the current SQLite implementation (which is file-based and primarily for single-node development) with a production-quality database system. Options include:
+        *   **Distributed SQL/NoSQL Databases:** (e.g., PostgreSQL, MySQL with clustering, Cassandra, CockroachDB) for scalability and resilience.
+        *   **Blockchain/Distributed Ledger Technology (DLT):** For scenarios requiring high immutability, transparency, and decentralized trust, though this comes with performance and complexity trade-offs.
+2.  **Distributed Architecture:**
+    *   Design the ANS services (Registry, Resolution) for distributed deployment to handle a large number of agents and requests (e.g., using microservices, load balancing, geographic distribution).
+3.  **Caching Strategies:**
+    *   Implement caching layers (e.g., Redis, Memcached) for frequently accessed data to improve resolution latency and reduce database load.
+4.  **Asynchronous Processing:**
+    *   For operations like complex AI evaluations or batch registrations, consider using message queues and background workers to improve responsiveness.
+5.  **Monitoring and Logging:**
+    *   Integrate comprehensive logging and monitoring to track system health, performance, and security events.
 
 ## Key Ideas
 
