@@ -8,7 +8,7 @@
 This project is a Next.js web application designed to demonstrate and explore the core concepts of an **Agent Capability Negotiation and Binding Protocol (ACNBP)**. It provides an interactive platform to visualize and experiment with key aspects of multi-agent systems, including:
 
 *   **Capability Negotiation:** How agents can discover and agree upon services based on defined requirements (e.g., Quality of Service, cost) and offered capabilities.
-*   **Agent Directory Service (ADS):** A sqlite registry where agents can be listed with their capabilities, addresses, and supported protocols.
+*   **Agent Naming Service (ANS):** A sqlite registry where agents can be listed with their capabilities, addresses, and supported protocols.
 *   **Secure Binding Protocol:** The process of establishing a secure and trusted communication channel between agents, using a local CA for certificate verification leveraging OpenSSL
 *   **AI-Powered Offer Evaluation:** Leveraging Generative AI (via Genkit and Gemini, to be implmented in next phase) to evaluate and score capability offers from different agents based on complex criteria, including security requirements.
 
