@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getCACryptoKeys } from '../ca/route'; // Adjust path as necessary
+import { getOrInitializeCACryptoKeys } from '../ca/route'; // Corrected import
 
 interface CertificatePayload {
   subjectAgentId: string;
@@ -26,10 +26,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Agent ID, Public Key, and ANS Endpoint are required' }, { status: 400 });
     }
 
-    const caCryptoKeys = getCACryptoKeys();
-    if (!caCryptoKeys) {
-      return NextResponse.json({ error: 'CA not initialized. Please setup CA first.' }, { status: 500 });
-    }
+    const caCryptoKeys = getOrInitializeCACryptoKeys();
+    // No need to check if caCryptoKeys is null, as getOrInitializeCACryptoKeys always returns keys or throws internally if it can't.
+    // The privateKey will always be present if getOrInitializeCACryptoKeys succeeds.
 
     const validFrom = new Date();
     const validTo = new Date();
@@ -47,7 +46,14 @@ export async function POST(request: Request) {
     const sign = crypto.createSign('SHA256');
     sign.update(JSON.stringify(certificatePayload));
     sign.end();
-    const signature = sign.sign(caCryptoKeys.privateKey, 'base64');
+
+    if (!caCryptoKeys.privateKey) {
+        // This check is more for TypeScript's benefit or if there's an unexpected scenario.
+        // getOrInitializeCACryptoKeys should ensure privateKey is set.
+        throw new Error("CA private key is not available for signing.");
+    }
+    const caPrivateKeyObject = crypto.createPrivateKey(caCryptoKeys.privateKey);
+    const signature = sign.sign(caPrivateKeyObject, 'base64');
 
     const signedCertificate: SignedCertificate = {
       ...certificatePayload,
@@ -58,9 +64,9 @@ export async function POST(request: Request) {
     console.log(`Certificate issued for agent: ${agentId}, including ANS endpoint: ${agentAnsEndpoint}`);
 
     return NextResponse.json(signedCertificate);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error issuing certificate:', error);
-    return NextResponse.json({ error: 'Failed to issue certificate' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to issue certificate', details: error.message }, { status: 500 });
   }
 }
 
@@ -68,3 +74,4 @@ export async function POST(request: Request) {
 export function getAgentCertificate(agentId: string): SignedCertificate | null {
     return certificateStore[agentId] || null;
 }
+

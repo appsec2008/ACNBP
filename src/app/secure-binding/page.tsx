@@ -74,18 +74,31 @@ export default function SecureBindingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: body ? JSON.stringify(body) : null,
       });
-      const data = await response.json();
+
       if (!response.ok) {
-        // Use details from API error if available, otherwise generic error message
-        const errorDetails = data.details || data.error || `HTTP error! status: ${response.status}`;
+        let errorDetails = `HTTP error! status: ${response.status} ${response.statusText}`;
+        try {
+          // Try to parse error response as JSON, as our API routes should return JSON errors
+          const errorData = await response.json();
+          errorDetails = errorData.details || errorData.error || errorDetails;
+        } catch (e) {
+          // If .json() fails, it means the response was not JSON (likely an HTML error page)
+          // Read as text to avoid another error and provide a snippet
+          const errorText = await response.text(); 
+          const snippet = errorText.length > 200 ? errorText.substring(0, 197) + "..." : errorText;
+          errorDetails = `${errorDetails}. Response was not valid JSON. Received: ${snippet}`;
+        }
         throw new Error(errorDetails);
       }
+
+      // If response.ok is true, then we expect JSON.
+      const data = await response.json();
       logEntry(stepName, successMessage, 'success', CheckCircle2, data);
       toast({ title: 'Success', description: successMessage });
       return data;
     } catch (error: any) {
-      logEntry(stepName, `${errorMessage}: ${error.message}`, 'error', AlertTriangle, { error: error.message, responseData: error.responseData });
-      toast({ title: 'Error', description: `${errorMessage}: ${error.message}`, variant: 'destructive' });
+      logEntry(stepName, `${errorMessage}: ${error.message}`, 'error', AlertTriangle, { error: error.message });
+      toast({ title: 'Error', description: `${errorMessage}: ${error.message}`, variant: 'destructive', duration: 10000 });
       return null;
     } finally {
       setIsLoading(prev => ({ ...prev, [loadingKey]: false }));
@@ -191,7 +204,6 @@ export default function SecureBindingPage() {
         return;
     }
 
-    // The success message for handleApiCall will be generic; more specific toast/log will come from the data processing.
     const verificationResult = await handleApiCall(
       '/api/secure-binding/verify-message',
       'POST',
@@ -202,21 +214,15 @@ export default function SecureBindingPage() {
       },
       `6. Server Agent (${agentB.id}) Verifies Message & Client's Certificate`,
       'verifyMsg',
-      `Verification processed for Client. Check details below.`, // Generic success for API call
-      `Verification process failed for Server Agent (${agentB.id}).` // Generic error for API call
+      `Verification processed for Client. Check details below.`,
+      `Verification process failed for Server Agent (${agentB.id}).`
     );
 
-    // Specific logging and toast based on the verificationResult content is implicitly handled by 
-    // handleApiCall's logEntry which includes the 'data' (verificationResult).
-    // The verificationResult now contains 'verifiedCertificateInfo'.
-    // The toast from handleApiCall will show the generic success/error.
-    // The details in the log entry will show the specific outcome including agent ID and endpoint from verifiedCertificateInfo.
     if (verificationResult?.overallStatus === 'success') {
         toast({ title: 'Verification Successful', description: verificationResult.details || `Message and certificate verified.`});
-    } else if (verificationResult) { // API call was ok, but verification failed
+    } else if (verificationResult) { 
         toast({ title: 'Verification Failed', description: verificationResult.details || 'Check log for details.', variant: 'destructive'});
     }
-    // If verificationResult is null, handleApiCall has already shown an error toast.
   };
 
   return (
