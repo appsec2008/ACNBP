@@ -48,6 +48,11 @@ export async function POST(request: Request) {
     signInstance.end();
     
     // getOrInitializeCACryptoKeys ensures privateKey is available
+    if (!caCryptoKeys.privateKey) {
+        // This case should ideally not be hit if getOrInitializeCACryptoKeys works as intended
+        console.error("CA private key is unexpectedly missing after initialization call.");
+        return NextResponse.json({ error: 'CA private key not available for signing.' }, { status: 500 });
+    }
     const caPrivateKeyObject = crypto.createPrivateKey(caCryptoKeys.privateKey);
     const signature = signInstance.sign(caPrivateKeyObject, 'base64');
 
