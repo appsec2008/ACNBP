@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getOrInitializeCACryptoKeys } from '../ca/route'; // Corrected import
+import { getOrInitializeCACryptoKeys } from '../ca/route'; // CORRECTED IMPORT
 
 interface CertificatePayload {
   subjectAgentId: string;
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Agent ID, Public Key, and ANS Endpoint are required' }, { status: 400 });
     }
 
-    const caCryptoKeys = getOrInitializeCACryptoKeys();
+    const caCryptoKeys = getOrInitializeCACryptoKeys(); // CORRECTED FUNCTION CALL
     // No need to check if caCryptoKeys is null, as getOrInitializeCACryptoKeys always returns keys or throws internally if it can't.
     // The privateKey will always be present if getOrInitializeCACryptoKeys succeeds.
 
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       subjectAgentId: agentId,
       subjectPublicKey: agentPublicKey,
       subjectAnsEndpoint: agentAnsEndpoint, // Include endpoint in payload
-      issuer: "DemoCA", 
+      issuer: "DemoCA",
       validFrom: validFrom.toISOString(),
       validTo: validTo.toISOString(),
     };
@@ -74,4 +74,3 @@ export async function POST(request: Request) {
 export function getAgentCertificate(agentId: string): SignedCertificate | null {
     return certificateStore[agentId] || null;
 }
-
