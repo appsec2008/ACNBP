@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getOrInitializeCACryptoKeys } from '../ca/route'; // CORRECTED IMPORT
+import { getOrInitializeCACryptoKeys } from '../ca/route'; // Corrected import
 
 interface CertificatePayload {
   subjectAgentId: string;
@@ -16,7 +16,9 @@ interface SignedCertificate extends CertificatePayload {
   signature: string; // Base64 signature of the CertificatePayload
 }
 
-// In-memory store for certificates
+// In-memory store for certificates issued by this specific API endpoint (not part of agent-registry)
+// This is distinct from the certificates stored in the agent-registry's database.
+// This route is typically used by the /secure-binding page for its simulation.
 const certificateStore: { [agentId: string]: SignedCertificate } = {};
 
 export async function POST(request: Request) {
@@ -26,9 +28,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Agent ID, Public Key, and ANS Endpoint are required' }, { status: 400 });
     }
 
-    const caCryptoKeys = getOrInitializeCACryptoKeys(); // CORRECTED FUNCTION CALL
-    // No need to check if caCryptoKeys is null, as getOrInitializeCACryptoKeys always returns keys or throws internally if it can't.
-    // The privateKey will always be present if getOrInitializeCACryptoKeys succeeds.
+    const caCryptoKeys = getOrInitializeCACryptoKeys(); // Corrected function call
 
     const validFrom = new Date();
     const validTo = new Date();
@@ -37,40 +37,38 @@ export async function POST(request: Request) {
     const certificatePayload: CertificatePayload = {
       subjectAgentId: agentId,
       subjectPublicKey: agentPublicKey,
-      subjectAnsEndpoint: agentAnsEndpoint, // Include endpoint in payload
-      issuer: "DemoCA",
+      subjectAnsEndpoint: agentAnsEndpoint,
+      issuer: "DemoCA", // This is the issuer name from the Secure Binding demo CA
       validFrom: validFrom.toISOString(),
       validTo: validTo.toISOString(),
     };
 
-    const sign = crypto.createSign('SHA256');
-    sign.update(JSON.stringify(certificatePayload));
-    sign.end();
-
-    if (!caCryptoKeys.privateKey) {
-        // This check is more for TypeScript's benefit or if there's an unexpected scenario.
-        // getOrInitializeCACryptoKeys should ensure privateKey is set.
-        throw new Error("CA private key is not available for signing.");
-    }
+    const signInstance = crypto.createSign('SHA256');
+    signInstance.update(JSON.stringify(certificatePayload));
+    signInstance.end();
+    
+    // getOrInitializeCACryptoKeys ensures privateKey is available
     const caPrivateKeyObject = crypto.createPrivateKey(caCryptoKeys.privateKey);
-    const signature = sign.sign(caPrivateKeyObject, 'base64');
+    const signature = signInstance.sign(caPrivateKeyObject, 'base64');
 
     const signedCertificate: SignedCertificate = {
       ...certificatePayload,
       signature,
     };
 
+    // Store this demo certificate in this endpoint's local memory
     certificateStore[agentId] = signedCertificate;
-    console.log(`Certificate issued for agent: ${agentId}, including ANS endpoint: ${agentAnsEndpoint}`);
+    console.log(`Certificate issued by /api/secure-binding/issue-certificate for agent: ${agentId}, endpoint: ${agentAnsEndpoint}`);
 
     return NextResponse.json(signedCertificate);
   } catch (error: any) {
-    console.error('Error issuing certificate:', error);
+    console.error('Error issuing certificate via /api/secure-binding/issue-certificate:', error);
     return NextResponse.json({ error: 'Failed to issue certificate', details: error.message }, { status: 500 });
   }
 }
 
-// Internal function (example, not directly used by verify-message if cert is passed)
+// Function to get a certificate issued by this specific API endpoint.
+// Not typically used if the certificate is passed directly during verification.
 export function getAgentCertificate(agentId: string): SignedCertificate | null {
     return certificateStore[agentId] || null;
 }
