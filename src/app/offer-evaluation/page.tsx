@@ -15,19 +15,27 @@ import { BrainCircuit, PlusCircle, Trash2, Loader2, Star, FileText, BadgeDollarS
 import { evaluateOffers } from "@/ai/flows/evaluate-offers-flow";
 import type { EvaluateOffersInput, EvaluateOffersOutput } from "@/ai/flows/evaluate-offers-flow";
 import { useToast } from "@/hooks/use-toast";
-import { Slider } from "@/components/ui/slider";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
 const capabilityOfferSchema = z.object({
   description: z.string().min(1, "Description is required."),
-  cost: z.coerce.number().min(0, "Cost must be non-negative."),
-  qos: z.coerce.number().min(0).max(1, "QoS must be between 0 and 1."),
-  protocolCompatibility: z.string().min(1, "Protocol compatibility is required."),
+  cost: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
+    z.number().min(0, "Cost must be non-negative, if specified.").optional()
+  ),
+  qos: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
+    z.number().min(0, "QoS must be between 0 and 1, if specified.").max(1).optional()
+  ),
+  protocolCompatibility: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : String(val)),
+    z.string().optional()
+  ),
 });
 
 const evaluateOffersFormSchema = z.object({
-  securityRequirements: z.string().optional(), // Made optional
+  securityRequirements: z.string().optional(),
   capabilityOffers: z.array(capabilityOfferSchema).min(1, "At least one capability offer is required."),
 });
 
@@ -42,7 +50,7 @@ export default function OfferEvaluationPage() {
     resolver: zodResolver(evaluateOffersFormSchema),
     defaultValues: {
       securityRequirements: "",
-      capabilityOffers: [{ description: "", cost: 0, qos: 0.5, protocolCompatibility: "" }],
+      capabilityOffers: [{ description: "", cost: undefined, qos: undefined, protocolCompatibility: undefined }],
     },
   });
 
@@ -56,12 +64,12 @@ export default function OfferEvaluationPage() {
     setResults(null);
     try {
       const aiInput: EvaluateOffersInput = {
-        securityRequirements: data.securityRequirements || undefined, // Pass undefined if empty string
+        securityRequirements: data.securityRequirements || undefined,
         capabilityOffers: data.capabilityOffers.map((offer, index) => ({ 
-          id: `offer-${index}-${Date.now()}`, // Generate a unique ID
+          id: `offer-${index}-${Date.now()}`,
           description: offer.description,
-          cost: Number(offer.cost),
-          qos: Number(offer.qos),
+          cost: offer.cost,
+          qos: offer.qos,
           protocolCompatibility: offer.protocolCompatibility,
         })),
       };
@@ -100,7 +108,7 @@ export default function OfferEvaluationPage() {
         <Card className="lg:col-span-1 shadow-lg">
           <CardHeader>
             <CardTitle>Evaluation Criteria</CardTitle>
-            <CardDescription>Define the parameters for evaluating capability offers.</CardDescription>
+            <CardDescription>Define the parameters for evaluating capability offers. Only description is required per offer.</CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -129,7 +137,7 @@ export default function OfferEvaluationPage() {
                           name={`capabilityOffers.${index}.description`}
                           render={({ field: offerField }) => (
                             <FormItem>
-                              <FormLabel>Description</FormLabel>
+                              <FormLabel>Description (Required)</FormLabel>
                               <FormControl>
                                 <Input placeholder="e.g., Data processing service" {...offerField} />
                               </FormControl>
@@ -143,7 +151,7 @@ export default function OfferEvaluationPage() {
                             name={`capabilityOffers.${index}.cost`}
                             render={({ field: offerField }) => (
                               <FormItem>
-                                <FormLabel>Cost</FormLabel>
+                                <FormLabel>Cost (Optional)</FormLabel>
                                 <FormControl>
                                   <Input type="number" placeholder="e.g., 100" {...offerField} />
                                 </FormControl>
@@ -156,15 +164,9 @@ export default function OfferEvaluationPage() {
                             name={`capabilityOffers.${index}.qos`}
                             render={({ field: offerField }) => (
                               <FormItem>
-                                <FormLabel>QoS ({offerField.value.toFixed(2)})</FormLabel>
+                                <FormLabel>QoS (0-1, Optional)</FormLabel>
                                 <FormControl>
-                                   <Slider
-                                      defaultValue={[0.5]}
-                                      max={1}
-                                      step={0.01}
-                                      onValueChange={(value) => offerField.onChange(value[0])}
-                                      value={[offerField.value]}
-                                    />
+                                   <Input type="number" step="0.01" min="0" max="1" placeholder="e.g., 0.9" {...offerField} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -176,7 +178,7 @@ export default function OfferEvaluationPage() {
                           name={`capabilityOffers.${index}.protocolCompatibility`}
                           render={({ field: offerField }) => (
                             <FormItem>
-                              <FormLabel>Protocol Compatibility</FormLabel>
+                              <FormLabel>Protocol Compatibility (Optional)</FormLabel>
                               <FormControl>
                                 <Input placeholder="e.g., ACNBP/1.0, HTTP/2" {...offerField} />
                               </FormControl>
@@ -202,7 +204,7 @@ export default function OfferEvaluationPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => append({ description: "", cost: 0, qos: 0.5, protocolCompatibility: "" })}
+                    onClick={() => append({ description: "", cost: undefined, qos: undefined, protocolCompatibility: undefined })}
                     className="mt-2"
                   >
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Capability Offer
@@ -259,22 +261,34 @@ export default function OfferEvaluationPage() {
                     </TableHeader>
                     <TableBody>
                       {results.sort((a,b) => b.score - a.score).map((result) => (
-                        <TableRow key={result.id}> {/* Use result.id as key */}
+                        <TableRow key={result.id}>
                           <TableCell className="font-medium max-w-xs truncate" title={result.description}>{result.description}</TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="secondary" className="whitespace-nowrap">
-                              <BadgeDollarSign className="mr-1 h-3 w-3" /> {result.cost.toFixed(2)}
-                            </Badge>
+                            {result.cost !== undefined ? (
+                              <Badge variant="secondary" className="whitespace-nowrap">
+                                <BadgeDollarSign className="mr-1 h-3 w-3" /> {result.cost.toFixed(2)}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">N/A</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="secondary" className="whitespace-nowrap">
-                              <Activity className="mr-1 h-3 w-3" /> {(result.qos * 100).toFixed(0)}%
-                            </Badge>
+                             {result.qos !== undefined ? (
+                              <Badge variant="secondary" className="whitespace-nowrap">
+                                <Activity className="mr-1 h-3 w-3" /> {(result.qos * 100).toFixed(0)}%
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">N/A</span>
+                            )}
                           </TableCell>
                           <TableCell className="max-w-xs truncate" title={result.protocolCompatibility}>
-                             <Badge variant="outline" className="whitespace-nowrap">
-                                <CheckCircle className="mr-1 h-3 w-3" /> {result.protocolCompatibility}
-                             </Badge>
+                             {result.protocolCompatibility !== undefined ? (
+                               <Badge variant="outline" className="whitespace-nowrap">
+                                  <CheckCircle className="mr-1 h-3 w-3" /> {result.protocolCompatibility}
+                               </Badge>
+                             ) : (
+                                <span className="text-muted-foreground text-xs">N/A</span>
+                             )}
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge className={result.score > 70 ? "bg-accent text-accent-foreground" : result.score > 40 ? "bg-yellow-400 text-yellow-900" : "bg-destructive text-destructive-foreground"}>
@@ -310,4 +324,3 @@ export default function OfferEvaluationPage() {
     </>
   );
 }
-
