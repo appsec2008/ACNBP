@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -11,14 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { BrainCircuit, PlusCircle, Trash2, Loader2, Star, FileText, BadgeDollarSign, Activity, CheckCircle } from "lucide-react";
-import { evaluateOffers } from "@/ai/flows/evaluate-offers-flow"; // UPDATED IMPORT
-import type { EvaluateOffersInput, EvaluateOffersOutput } from "@/ai/flows/evaluate-offers-flow"; // UPDATED IMPORT
+import { evaluateOffers } from "@/ai/flows/evaluate-offers-flow";
+import type { EvaluateOffersInput, EvaluateOffersOutput } from "@/ai/flows/evaluate-offers-flow";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-// RENAMED SCHEMA
 const capabilityOfferSchema = z.object({
   description: z.string().min(1, "Description is required."),
   cost: z.coerce.number().min(0, "Cost must be non-negative."),
@@ -26,47 +26,46 @@ const capabilityOfferSchema = z.object({
   protocolCompatibility: z.string().min(1, "Protocol compatibility is required."),
 });
 
-// RENAMED SCHEMA
 const evaluateOffersFormSchema = z.object({
-  securityRequirements: z.string().min(1, "Security requirements are required."),
-  capabilityOffers: z.array(capabilityOfferSchema).min(1, "At least one capability offer is required."), // UPDATED FIELD NAME
+  securityRequirements: z.string().optional(), // Made optional
+  capabilityOffers: z.array(capabilityOfferSchema).min(1, "At least one capability offer is required."),
 });
 
-type EvaluateOffersFormValues = z.infer<typeof evaluateOffersFormSchema>; // UPDATED TYPE
+type EvaluateOffersFormValues = z.infer<typeof evaluateOffersFormSchema>;
 
-export default function OfferEvaluationPage() { // RENAMED COMPONENT
+export default function OfferEvaluationPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState<EvaluateOffersOutput | null>(null); // UPDATED TYPE
+  const [results, setResults] = useState<EvaluateOffersOutput | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<EvaluateOffersFormValues>({ // UPDATED TYPE
-    resolver: zodResolver(evaluateOffersFormSchema), // UPDATED SCHEMA
+  const form = useForm<EvaluateOffersFormValues>({
+    resolver: zodResolver(evaluateOffersFormSchema),
     defaultValues: {
       securityRequirements: "",
-      capabilityOffers: [{ description: "", cost: 0, qos: 0.5, protocolCompatibility: "" }], // UPDATED FIELD NAME
+      capabilityOffers: [{ description: "", cost: 0, qos: 0.5, protocolCompatibility: "" }],
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "capabilityOffers", // UPDATED FIELD NAME
+    name: "capabilityOffers",
   });
 
-  async function onSubmit(data: EvaluateOffersFormValues) { // UPDATED TYPE
+  async function onSubmit(data: EvaluateOffersFormValues) {
     setIsLoading(true);
     setResults(null);
     try {
-      const aiInput: EvaluateOffersInput = { // UPDATED TYPE
-        securityRequirements: data.securityRequirements,
-        // UPDATED MAPPING
-        capabilityOffers: data.capabilityOffers.map(offer => ({ 
+      const aiInput: EvaluateOffersInput = {
+        securityRequirements: data.securityRequirements || undefined, // Pass undefined if empty string
+        capabilityOffers: data.capabilityOffers.map((offer, index) => ({ 
+          id: `offer-${index}-${Date.now()}`, // Generate a unique ID
           description: offer.description,
           cost: Number(offer.cost),
           qos: Number(offer.qos),
           protocolCompatibility: offer.protocolCompatibility,
         })),
       };
-      const evaluatedOffers = await evaluateOffers(aiInput); // UPDATED FUNCTION CALL
+      const evaluatedOffers = await evaluateOffers(aiInput);
       setResults(evaluatedOffers);
       toast({
         title: "Evaluation Complete",
@@ -75,9 +74,13 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
       });
     } catch (error) {
       console.error("Offer evaluation error:", error);
+      let errorMessage = "An error occurred while evaluating offers. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       toast({
         title: "Evaluation Failed",
-        description: "An error occurred while evaluating offers. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -107,9 +110,9 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
                   name="securityRequirements"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Security Requirements</FormLabel>
+                      <FormLabel>Security Requirements (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., End-to-end encryption, specific compliance standards..." {...field} rows={4}/>
+                        <Textarea placeholder="e.g., End-to-end encryption, specific compliance standards... Leave blank if not applicable." {...field} rows={4}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -117,13 +120,13 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
                 />
 
                 <div>
-                  <FormLabel>Capability Offers</FormLabel> {/* UPDATED LABEL */}
+                  <FormLabel>Capability Offers</FormLabel>
                   {fields.map((field, index) => (
                     <Card key={field.id} className="mt-2 mb-4 p-4 border rounded-md shadow-sm">
                       <div className="space-y-4">
                         <FormField
                           control={form.control}
-                          name={`capabilityOffers.${index}.description`} // UPDATED FIELD NAME
+                          name={`capabilityOffers.${index}.description`}
                           render={({ field: offerField }) => (
                             <FormItem>
                               <FormLabel>Description</FormLabel>
@@ -137,7 +140,7 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
                         <div className="grid grid-cols-2 gap-4">
                            <FormField
                             control={form.control}
-                            name={`capabilityOffers.${index}.cost`} // UPDATED FIELD NAME
+                            name={`capabilityOffers.${index}.cost`}
                             render={({ field: offerField }) => (
                               <FormItem>
                                 <FormLabel>Cost</FormLabel>
@@ -150,10 +153,10 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
                           />
                            <FormField
                             control={form.control}
-                            name={`capabilityOffers.${index}.qos`} // UPDATED FIELD NAME
+                            name={`capabilityOffers.${index}.qos`}
                             render={({ field: offerField }) => (
                               <FormItem>
-                                <FormLabel>QoS (0-1)</FormLabel>
+                                <FormLabel>QoS ({offerField.value.toFixed(2)})</FormLabel>
                                 <FormControl>
                                    <Slider
                                       defaultValue={[0.5]}
@@ -170,7 +173,7 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
                         </div>
                         <FormField
                           control={form.control}
-                          name={`capabilityOffers.${index}.protocolCompatibility`} // UPDATED FIELD NAME
+                          name={`capabilityOffers.${index}.protocolCompatibility`}
                           render={({ field: offerField }) => (
                             <FormItem>
                               <FormLabel>Protocol Compatibility</FormLabel>
@@ -238,7 +241,7 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
               <CardHeader>
                 <CardTitle>Evaluation Results</CardTitle>
                 <CardDescription>
-                  {results.length > 0 ? "Here are the AI-powered evaluations of the capability offers." : "No results to display."}
+                  {results.length > 0 ? "Here are the AI-powered evaluations of the capability offers." : "No results to display. AI might not have returned valid data or no offers were processed."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -255,8 +258,8 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {results.sort((a,b) => b.score - a.score).map((result, index) => (
-                        <TableRow key={index}>
+                      {results.sort((a,b) => b.score - a.score).map((result) => (
+                        <TableRow key={result.id}> {/* Use result.id as key */}
                           <TableCell className="font-medium max-w-xs truncate" title={result.description}>{result.description}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="secondary" className="whitespace-nowrap">
@@ -286,7 +289,7 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
                     </TableBody>
                   </Table>
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">No evaluation results available. Submit criteria to see results.</p>
+                  <p className="text-muted-foreground text-center py-8">No evaluation results available. Ensure offers were submitted and the AI processed them correctly.</p>
                 )}
               </CardContent>
             </Card>
@@ -307,3 +310,4 @@ export default function OfferEvaluationPage() { // RENAMED COMPONENT
     </>
   );
 }
+

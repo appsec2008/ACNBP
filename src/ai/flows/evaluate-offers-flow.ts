@@ -12,53 +12,55 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-// Renamed from EvaluateSkillSetsInputSchema
 const EvaluateOffersInputSchema = z.object({
-  capabilityOffers: z.array( // Renamed from skillSetOffers
+  capabilityOffers: z.array(
     z.object({
-      id: z.string().describe('A unique identifier for this offer.'), // Added ID
-      description: z.string().describe('A description of the capability being offered.'), // Updated description
-      cost: z.number().describe('The cost of the capability offer.'), // Updated description
+      id: z.string().describe('A unique identifier for this offer.'),
+      description: z.string().describe('A description of the capability being offered.'),
+      cost: z.number().describe('The cost of the capability offer.'),
       qos: z.number().describe('The quality of service offered (0-1).'),
       protocolCompatibility: z.string().describe('The protocol compatibility of the offer.'),
     })
-  ).describe('A list of capability offers to evaluate.'), // Updated description
-  securityRequirements: z.string().describe('The security requirements for the agent selection.'),
+  ).describe('A list of capability offers to evaluate.'),
+  securityRequirements: z.string().optional().describe('The security requirements for the agent selection. If not provided, evaluation will focus on other factors.'),
 });
-export type EvaluateOffersInput = z.infer<typeof EvaluateOffersInputSchema>; // Renamed type
+export type EvaluateOffersInput = z.infer<typeof EvaluateOffersInputSchema>;
 
-// Renamed from EvaluatedSkillSetSchema
 const EvaluatedOfferSchema = z.object({
-  id: z.string().describe('The unique identifier of the offer being evaluated.'), // Added ID
-  description: z.string().describe('A description of the capability being offered.'), // Updated description
-  cost: z.number().describe('The cost of the capability offer.'), // Updated description
+  id: z.string().describe('The unique identifier of the offer being evaluated.'),
+  description: z.string().describe('A description of the capability being offered.'),
+  cost: z.number().describe('The cost of the capability offer.'),
   qos: z.number().describe('The quality of service offered (0-1).'),
   protocolCompatibility: z.string().describe('The protocol compatibility of the offer.'),
-  score: z.number().describe('The overall score of the capability offer based on cost, QoS, protocol compatibility and security requirements.'), // Updated description
-  reasoning: z.string().describe('The reasoning behind the score assigned to the capability offer.'), // Updated description
+  score: z.number().describe('The overall score of the capability offer based on cost, QoS, protocol compatibility and security requirements (0-100).'),
+  reasoning: z.string().describe('The reasoning behind the score assigned to the capability offer.'),
 });
 
-// Renamed from EvaluateSkillSetsOutputSchema
-const EvaluateOffersOutputSchema = z.array(EvaluatedOfferSchema).describe('A list of evaluated capability offers with scores and reasoning.'); // Updated description
-export type EvaluateOffersOutput = z.infer<typeof EvaluateOffersOutputSchema>; // Renamed type
+const EvaluateOffersOutputSchema = z.array(EvaluatedOfferSchema).describe('A list of evaluated capability offers with scores and reasoning.');
+export type EvaluateOffersOutput = z.infer<typeof EvaluateOffersOutputSchema>;
 
-// Renamed from evaluateSkillSets
 export async function evaluateOffers(input: EvaluateOffersInput): Promise<EvaluateOffersOutput> {
-  return evaluateOffersFlow(input); // Renamed flow call
+  return evaluateOffersFlow(input);
 }
 
-// Renamed from evaluateSkillSetsPrompt
 const prompt = ai.definePrompt({
-  name: 'evaluateOffersPrompt', // Renamed prompt
+  name: 'evaluateOffersPrompt',
   input: {schema: EvaluateOffersInputSchema},
   output: {schema: EvaluateOffersOutputSchema},
-  prompt: `You are an expert in evaluating capability offers from agents based on cost, QoS, protocol compatibility, and security requirements.
+  prompt: `You are an expert in evaluating capability offers from agents.
+You will receive a list of capability offers, each with a unique ID, description, cost, QoS, and protocol compatibility.
+{{#if securityRequirements}}
+You will also receive security requirements.
+Evaluate each capability offer based on how well it meets the security requirements, its cost, quality of service, and protocol compatibility.
+{{else}}
+Security requirements have not been specified. Evaluate each capability offer primarily based on its cost, quality of service, and protocol compatibility.
+{{/if}}
+You must output a list of evaluated capability offers. For each offer, include its original ID, description, cost, QoS, protocolCompatibility, a score (0-100), and detailed reasoning for the score.
+Ensure the output is a valid JSON array of evaluated capability offers, precisely matching the output schema.
 
-You will receive a list of capability offers, each with a unique ID, and the security requirements. You will evaluate each capability offer based on how well it meets the requirements, its cost, quality of service, and protocol compatibility.
-
-You will output a list of evaluated capability offers, each with its original ID, a score (0-100), and reasoning for the score.
-
+{{#if securityRequirements}}
 Security Requirements: {{{securityRequirements}}}
+{{/if}}
 
 Capability Offers:
 {{#each capabilityOffers}}
@@ -67,23 +69,48 @@ Description: {{{this.description}}}
 Cost: {{{this.cost}}}
 QoS: {{{this.qos}}}
 Protocol Compatibility: {{{this.protocolCompatibility}}}
+---
 {{/each}}
 
-Output each capability offer with its original ID, a score (0-100), and reasoning for the score.
-Ensure that the output is a valid JSON array of evaluated capability offers, including the ID for each offer.
+Respond with ONLY the JSON array of evaluated offers. Do not include any other text or explanation.
 `,
 });
 
-// Renamed from evaluateSkillSetsFlow
 const evaluateOffersFlow = ai.defineFlow(
   {
-    name: 'evaluateOffersFlow', // Renamed flow
+    name: 'evaluateOffersFlow',
     inputSchema: EvaluateOffersInputSchema,
     outputSchema: EvaluateOffersOutputSchema,
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error("AI did not return an output for offer evaluation.");
+    }
+    // Ensure the output is an array, sometimes the model might wrap it in an object.
+    if (Array.isArray(output)) {
+        return output;
+    }
+    // A common pattern if the model doesn't adhere strictly is to wrap in { "result": [...] } or similar
+    if (typeof output === 'object' && output !== null) {
+        const keys = Object.keys(output);
+        if (keys.length === 1 && Array.isArray((output as any)[keys[0]])) {
+            return (output as any)[keys[0]];
+        }
+    }
+    // If still not an array, attempt to parse if it's a stringified JSON array
+    if (typeof output === 'string') {
+        try {
+            const parsed = JSON.parse(output);
+            if (Array.isArray(parsed)) {
+                return parsed;
+            }
+        } catch (e) {
+            // parsing failed, fall through to error
+        }
+    }
+    console.error("Unexpected AI output format for offer evaluation:", output);
+    throw new Error("AI returned an output in an unexpected format. Expected a JSON array of offers.");
   }
 );
 
