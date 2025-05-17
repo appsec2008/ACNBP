@@ -23,14 +23,14 @@ const initialFeaturesData: Feature[] = [
     href: "/capability-negotiation",
   },
   {
-    title: "Agent Directory Service",
-    description: "A directory for registering and discovering agents, their capabilities, and protocol support.",
+    title: "Agent Name Service (ANS)",
+    description: "Explore agent registration in the ANS Registry and name resolution functionalities based on the ANS architecture.",
     icon: ListTree,
-    href: "/agent-directory",
+    href: "/agent-directory", // This page hosts the ANS Agent Registry
   },
   {
     title: "Secure Binding Protocol",
-    description: "Explore the mechanisms for establishing secure and trusted bindings between agents.",
+    description: "Explore the mechanisms for establishing secure and trusted bindings between agents using CA-issued certificates.",
     icon: ShieldCheck,
     href: "/secure-binding",
   },
@@ -74,7 +74,7 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle>About ACNBP</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0"> {/* Adjusted padding top for CardContent after CardHeader */}
+        <CardContent className="pt-0">
           <p className="text-muted-foreground">
             The Agent Capability Negotiation and Binding Protocol (ACNBP) provides a standardized framework
             for dynamic interaction and collaboration in multi-agent systems. This platform offers tools to understand and implement
