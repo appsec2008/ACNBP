@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google'; // Using Geist from next/font/google as in original
 import './globals.css';
@@ -16,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Agent Capability Negotiation and Binding Protocol',
-  description: 'A platform for demonstrating Agent Capability Negotiation and Binding Protocol (ACNBP) functionalities.',
+  title: 'Agent Name Service (ANS) Protocol',
+  description: 'A platform for demonstrating Agent Name Service (ANS) functionalities.',
 };
 
 export default function RootLayout({

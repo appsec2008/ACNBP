@@ -19,7 +19,7 @@ const availableServices: AgentService[] = [
     description: "High-accuracy image recognition and tagging, supports various formats.", 
     qos: 0.95, 
     cost: 100, 
-    protocol: "ACNBP-Vision/1.0", 
+    protocol: "ANS-Vision/1.0", // Updated protocol name
     ansEndpoint: "a2a://ImagePro.ImageRecognition.VisionCorp.v1.2.0.gpu-optimized" 
   },
   { 
@@ -29,7 +29,7 @@ const availableServices: AgentService[] = [
     description: "Advanced NLP for summarizing long documents, multiple languages.", 
     qos: 0.90, 
     cost: 75, 
-    protocol: "ACNBP-NLP/1.2", 
+    protocol: "ANS-NLP/1.2", // Updated protocol name
     ansEndpoint: "mcp://TextSumAI.TextSummarization.NLPHub.v2.0.1.multilang" 
   },
   { 
@@ -39,7 +39,7 @@ const availableServices: AgentService[] = [
     description: "Scalable data processing and analytics, batch and stream modes.", 
     qos: 0.88, 
     cost: 120, 
-    protocol: "ACNBP-Data/1.0", 
+    protocol: "ANS-Data/1.0", // Updated protocol name
     ansEndpoint: "acp://DataBot.DataProcessing.ComputeCorp.v1.0.0.batch" 
   },
   { 
@@ -49,7 +49,7 @@ const availableServices: AgentService[] = [
     description: "Encrypted and resilient data storage solution with audit trails.", 
     qos: 0.99, 
     cost: 50, 
-    protocol: "ACNBP-SecureStore/1.1", 
+    protocol: "ANS-SecureStore/1.1", // Updated protocol name
     ansEndpoint: "a2a://SecureStore.SecureStorage.VaultInc.v1.1.0.e2ee" 
   },
   { 
@@ -59,7 +59,7 @@ const availableServices: AgentService[] = [
     description: "Basic image recognition service for general purposes, limited formats.", 
     qos: 0.80, 
     cost: 40, 
-    protocol: "ACNBP-Vision/1.0", 
+    protocol: "ANS-Vision/1.0", // Updated protocol name
     ansEndpoint: "a2a://ImageBasic.ImageRecognition.VisionCorp.v1.0.0.standard" 
   },
   { 
@@ -69,7 +69,7 @@ const availableServices: AgentService[] = [
     description: "Real-time translation for multiple language pairs.", 
     qos: 0.92, 
     cost: 60, 
-    protocol: "ACNBP-NLP/1.2", 
+    protocol: "ANS-NLP/1.2", // Updated protocol name
     ansEndpoint: "mcp://Translator.LanguageTranslation.LinguaTech.v1.5.0.realtime" 
   },
   { 
@@ -79,7 +79,7 @@ const availableServices: AgentService[] = [
     description: "Optimized storage for time-series data with querying capabilities.", 
     qos: 0.97, 
     cost: 90, 
-    protocol: "ACNBP-Data/1.0", 
+    protocol: "ANS-Data/1.0", // Updated protocol name
     ansEndpoint: "acp://TSDB.DataStorageTimeSeries.DataStack.v2.3.1.fastquery" 
   },
   { 
@@ -89,7 +89,7 @@ const availableServices: AgentService[] = [
     description: "Upscales image resolution using AI.", 
     qos: 0.85, 
     cost: 150, 
-    protocol: "ACNBP-Vision/1.1", 
+    protocol: "ANS-Vision/1.1", // Updated protocol name
     ansEndpoint: "a2a://ImageUpscaler.ImageResolutionUpscaling.PixelPerfect.v1.0.0.ai-enhanced" 
   },
 ];

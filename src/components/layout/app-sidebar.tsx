@@ -49,7 +49,7 @@ export function AppSidebar() {
             </Link>
           </Button>
           <h1 className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:hidden transition-opacity duration-300">
-            ACNBP Protocol
+            ANS Protocol
           </h1>
         </div>
         <div className="md:hidden ml-auto">
@@ -92,4 +92,4 @@ export function AppSidebar() {
   );
 }
 
-    
+

@@ -100,7 +100,7 @@ export default function OfferEvaluationPage() {
     <>
       <PageHeader
         title="AI-Powered Offer Evaluation"
-        description="Leverage AI to assess capability offers based on cost, Quality of Service (QoS), protocol compatibility, and your specific security requirements. This tool helps optimize agent selection by providing a scored and reasoned evaluation for each offer within the ACNBP framework."
+        description="Leverage AI to assess capability offers based on cost, Quality of Service (QoS), protocol compatibility, and your specific security requirements. This tool helps optimize agent selection by providing a scored and reasoned evaluation for each offer within the ANS framework."
         icon={BrainCircuit}
       />
 
@@ -180,7 +180,7 @@ export default function OfferEvaluationPage() {
                             <FormItem>
                               <FormLabel>Protocol Compatibility (Optional)</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g., ACNBP/1.0, HTTP/2" {...offerField} />
+                                <Input placeholder="e.g., ANS/1.0, HTTP/2" {...offerField} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>

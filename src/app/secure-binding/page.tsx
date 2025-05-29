@@ -38,7 +38,7 @@ const SIMULATED_NEGOTIATED_AGENT = {
 const SERVER_AGENT_DETAILS = {
     id: "ServerAgentB",
     name: "SecureServiceEndpoint (Server)",
-    ansEndpoint: "a2a://SecureService.GenericEndpoint.ACNBP.v1.0.0.main"
+    ansEndpoint: "a2a://SecureService.GenericEndpoint.ANS.v1.0.0.main" // Updated protocol name
 }
 
 export default function SecureBindingPage() {
@@ -78,20 +78,16 @@ export default function SecureBindingPage() {
       if (!response.ok) {
         let errorDetails = `HTTP error! status: ${response.status} ${response.statusText}`;
         try {
-          // Try to parse error response as JSON, as our API routes should return JSON errors
           const errorData = await response.json();
           errorDetails = errorData.details || errorData.error || errorDetails;
         } catch (e) {
-          // If .json() fails, it means the response was not JSON (likely an HTML error page)
-          // Read as text to avoid another error and provide a snippet
           const errorText = await response.text(); 
           const snippet = errorText.length > 200 ? errorText.substring(0, 197) + "..." : errorText;
           errorDetails = `${errorDetails}. Response was not valid JSON. Received: ${snippet}`;
         }
         throw new Error(errorDetails);
       }
-
-      // If response.ok is true, then we expect JSON.
+      
       const data = await response.json();
       logEntry(stepName, successMessage, 'success', CheckCircle2, data);
       toast({ title: 'Success', description: successMessage });
@@ -228,15 +224,15 @@ export default function SecureBindingPage() {
   return (
     <>
       <PageHeader
-        title="Secure Binding Protocol Demonstration"
-        description="Simulate binding between a client (loaded from negotiation) and a server. CA signs certificates binding Agent ID, Public Key, & ANS Endpoint. Client signs a message. Server verifies the client's certificate against CA and then the message signature against the client's certificate."
+        title="Secure Agent Binding Demonstration"
+        description="Simulate binding between a client (loaded from negotiation) and a server. CA signs certificates binding Agent ID, Public Key, & ANS Endpoint. Client signs a message. Server verifies the client's certificate against CA and then the message signature against the client's certificate (all within the ANS framework)."
         icon={ShieldCheck}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1 shadow-lg">
           <CardHeader>
-            <CardTitle>Protocol Steps</CardTitle>
+            <CardTitle>Binding Protocol Steps</CardTitle>
             <CardDescription>Execute steps to simulate secure binding.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">

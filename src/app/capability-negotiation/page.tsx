@@ -100,7 +100,7 @@ export default function CapabilityNegotiationPage() {
     <>
       <PageHeader
         title="Capability Negotiation"
-        description="Initiate and observe the capability negotiation process. Define requirements, and the system will find matching service provider agents. Optionally, provide security requirements to leverage AI for offer evaluation."
+        description="Initiate and observe the capability negotiation process. Define requirements, and the system will find matching service provider agents (potentially discovered via ANS). Optionally, provide security requirements to leverage AI for offer evaluation."
         icon={BotMessageSquare}
       />
 
@@ -236,4 +236,3 @@ export default function CapabilityNegotiationPage() {
     </>
   );
 }
-

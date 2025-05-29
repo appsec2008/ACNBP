@@ -1,18 +1,21 @@
-
-# Agent Capability Negotiation and Binding Protocol (ACNBP) Platform
+md
+# Agent Name Service (ANS) Platform
 
 **Author:** Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff
 
 ## Project Introduction
 
-This project is a Next.js web application designed to demonstrate and explore the core concepts of an **Agent Capability Negotiation and Binding Protocol (ACNBP)**. It provides an interactive platform to visualize and experiment with key aspects of multi-agent systems, including:
+The proliferation of AI agents requires robust mechanisms for secure discovery. This paper introduces the Agent Name Service (ANS), a novel architecture based on DNS addressing the lack of a public agent discovery framework. ANS provides a protocol-agnostic registry infrastructure that leverages Public Key Infrastructure (PKI) certificates for verifiable agent identity and trust. The architecture features several key innovations: a formalized agent registration and renewal mechanism for lifecycle management; DNS-inspired naming conventions with capability-aware resolution; a modular Protocol Adapter Layer supporting diverse communication standards (A2A, MCP, ACP etc.); and precisely defined algorithms for secure resolution. We implement structured communication using JSON Schema and conduct a comprehensive threat analysis of our proposal. The result is a foundational directory service addressing the core challenges of secured discovery and interaction in multi-agent systems, paving the way for future interoperable, trustworthy, and scalable agent ecosystems.
 
-*   **Capability Negotiation:** How agents can discover and agree upon services based on defined requirements (e.g., Quality of Service, cost) and offered capabilities.
-*   **Agent Name Service (ANS):** A system inspired by DNS for agent discovery, featuring an "ANS Agent Registry" where agents are listed with their capabilities, CA-issued certificates, and protocol details, and an "ANS Resolution" service to look up agents.
-*   **Secure Binding Protocol:** The process of establishing a secure and trusted communication channel between agents, using a local CA for certificate verification.
-*   **AI-Powered Offer Evaluation:** Leveraging Generative AI (via Genkit and Gemini) to evaluate and score capability offers from different agents based on complex criteria, including security requirements.
+This project is a Next.js web application designed to demonstrate and explore the core concepts of an **Agent Name Service (ANS)**. It provides an interactive platform to visualize and experiment with key aspects of multi-agent systems, including:
 
-The platform aims to provide a tangible way to understand the dynamics of agent interactions within a structured protocol.
+*   **Agent Registration & Lifecycle:** How agents are registered with the ANS, including certificate issuance and renewal/revocation processes.
+*   **Agent Name Service (ANS):** A system inspired by DNS for agent discovery, featuring an "ANS Agent Registry" where agents are listed with their capabilities, CA-issued certificates, and protocol details, and an "ANS Resolution" service to look up agents by their structured ANSName.
+*   **Secure Agent Identity:** Demonstrating how PKI-issued certificates bind an agent's identity (ID, Public Key, ANSName/Endpoint).
+*   **Capability-Aware Discovery (Conceptual):** While full capability-based searching isn't implemented, the ANSName structure itself embeds capability information.
+*   **AI-Powered Offer Evaluation:** Leveraging Generative AI (via Genkit and Gemini) to evaluate and score capability offers from different agents, which could be discovered via ANS.
+
+The platform aims to provide a tangible way to understand the dynamics of agent interactions within a structured ANS framework.
 
 ## Important: Demo Status and Future Improvements
 
@@ -48,15 +51,17 @@ Significant work is required to address security, scalability, and robustness be
 5.  **Monitoring and Logging:**
     *   Integrate comprehensive logging and monitoring to track system health, performance, and security events.
 
-## Key Ideas
+## Key Ideas (Agent Name Service - ANS)
 
-The ACNBP platform is built around the following key ideas:
+The ANS platform is built around the following key ideas from the referenced paper:
 
-1.  **Dynamic Service Discovery:** Agents need mechanisms to find other agents that can provide desired capabilities. The Agent Name Service (ANS) with its Registry and Resolution components demonstrates this.
-2.  **Negotiation of Terms:** Before committing to a service, agents must negotiate terms such as QoS, cost, and protocol compatibility. The Capability Negotiation module demonstrates this process.
-3.  **Trust and Security:** Establishing secure communication channels is paramount. The Secure Binding module demonstrates steps involved in creating trusted bindings using CA-issued certificates.
-4.  **Intelligent Decision Making:** Agents can benefit from AI to evaluate complex offers and make optimal choices. The AI-Powered Offer Evaluation showcases this by using Genkit to score offers against security requirements.
-5.  **Standardized Protocol Interaction:** The underlying concept is that agents communicate and collaborate based on a defined protocol (ACNBP), ensuring interoperability.
+1.  **Universal Agent Directory:** ANS provides a protocol-agnostic registry infrastructure for secure AI agent discovery.
+2.  **PKI-Based Identity:** Leverages Public Key Infrastructure (PKI) certificates for verifiable agent identity and trust.
+3.  **Lifecycle Management:** Formalized agent registration, renewal, and revocation mechanisms.
+4.  **DNS-Inspired Naming:** Uses structured ANSNames (`Protocol://AgentID.agentCapability.Provider.vVersion.Extension`) for discovery.
+5.  **Capability-Aware Resolution (Conceptual):** The ANSName itself embeds capability, and the system allows resolution based on these structured names.
+6.  **Modular Protocol Support:** A conceptual Protocol Adapter Layer allows support for diverse communication standards (A2A, MCP, ACP, etc.), demonstrated here by storing protocol-specific data.
+7.  **Secure Resolution Algorithms:** The platform demonstrates basic secure resolution by returning CA-signed agent certificates.
 
 ## Prerequisites
 
@@ -69,8 +74,8 @@ Before you begin, ensure you have the following installed:
 
 1.  **Clone the repository (if you haven't already):**
     ```bash
-    git clone https://github.com/appsec2008/https---github.com-appsec2008-ACNBP-Protocol.git
-    cd ACNBP-Protocol
+    git clone https://github.com/appsec2008/https---github.com-appsec2008-ACNBP-Protocol.git # Replace with your actual repo URL
+    cd your-repo-name # Replace with your actual repo directory
     ```
 
 2.  **Install dependencies:**
@@ -128,7 +133,7 @@ Contributions are welcome! If you'd like to contribute to this project, please f
 4.  **Test Your Changes:** Ensure your changes don't break existing functionality and that new features work as expected.
 5.  **Commit Your Changes:** Write clear and concise commit messages.
     ```bash
-    git commit -m "feat: Add new capability negotiation parameter"
+    git commit -m "feat: Add new ANS resolution parameter"
     ```
 6.  **Push to Your Fork:**
     ```bash
@@ -140,13 +145,13 @@ Please ensure your code is well-formatted and, if adding new features, consider 
 
 ## Referencing this Project
 
-If you use this ACNBP Platform in your research or work, please consider citing the associated paper:
+If you use this ANS Platform in your research or work, please consider citing the associated paper:
 
-Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff ([YEAR_OF_PUBLICATION]). *[Title of your arXiv Paper]*. arXiv preprint arXiv:[ARXIV_ID_HERE, e.g., 2401.12345]. Retrieved from [FULL_URL_TO_ARXIV_PAPER, e.g., https://arxiv.org/abs/2401.12345]
+Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff ([YEAR_OF_PUBLICATION]). *Agent Name Service (ANS): A Universal Directory for Secure AI Agent Discovery and Interoperability*. arXiv preprint arXiv:[ARXIV_ID_HERE, e.g., 2505.XXXXX]. Retrieved from [FULL_URL_TO_ARXIV_PAPER, e.g., https://arxiv.org/abs/2505.XXXXX]
 
 You can also refer to this software implementation:
 
-Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff. *Agent Capability Negotiation and Binding Protocol (ACNBP) Platform* [Software]. Retrieved from [URL_OF_THIS_GITHUB_REPOSITORY_IF_PUBLIC]
+Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff. *Agent Name Service (ANS) Platform* [Software]. Retrieved from [URL_OF_THIS_GITHUB_REPOSITORY_IF_PUBLIC]
 
 ## License
 
@@ -155,7 +160,7 @@ This project is licensed under the MIT License.
 ```
 MIT License
 
-Copyright (c) 2024 Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff 
+Copyright (c) 2024 Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -3,7 +3,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card"; // Added CardHeader
+import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LayoutDashboard, BotMessageSquare, ListTree, ShieldCheck, BrainCircuit, ExternalLink } from "lucide-react";
@@ -18,25 +18,25 @@ interface Feature {
 const initialFeaturesData: Feature[] = [
   {
     title: "Capability Negotiation",
-    description: "Demonstrate the process of agents negotiating capabilities based on requirements and offers.",
+    description: "Demonstrate agents negotiating capabilities based on requirements and offers, often using ANS for discovery.",
     icon: BotMessageSquare,
     href: "/capability-negotiation",
   },
   {
     title: "Agent Name Service (ANS)",
-    description: "Explore agent registration in the ANS Registry and name resolution functionalities based on the ANS architecture.",
+    description: "Explore core ANS functionalities: agent registration in the ANS Registry and name resolution.",
     icon: ListTree,
-    href: "/agent-directory", // This page hosts the ANS Agent Registry
+    href: "/agent-directory", 
   },
   {
-    title: "Secure Binding Protocol",
-    description: "Explore the mechanisms for establishing secure and trusted bindings between agents using CA-issued certificates.",
+    title: "Secure Agent Binding",
+    description: "Explore mechanisms for establishing secure bindings between agents using CA-issued certificates obtained via ANS registration.",
     icon: ShieldCheck,
     href: "/secure-binding",
   },
   {
     title: "AI-Powered Offer Evaluation",
-    description: "Utilize AI to evaluate capability offers based on multiple criteria like cost, QoS, and security.",
+    description: "Utilize AI to evaluate capability offers from agents, potentially discovered through ANS.",
     icon: BrainCircuit,
     href: "/offer-evaluation",
   },
@@ -46,8 +46,8 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-2">
       <PageHeader
-        title="Agent Capability Negotiation and Binding Protocol"
-        description="Explore the core components and functionalities of the ACNBP. This platform demonstrates how agents can negotiate capabilities, register in a directory, establish secure bindings, and evaluate offers intelligently."
+        title="Agent Name Service (ANS) Protocol"
+        description="Explore the core components and functionalities of the Agent Name Service (ANS). This platform demonstrates how agents can be registered, discovered via ANSNames, and how their identities can be secured within an agent ecosystem."
         icon={LayoutDashboard}
       />
 
@@ -72,13 +72,13 @@ export default function DashboardPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>About ACNBP</CardTitle>
+          <CardTitle>About Agent Name Service (ANS)</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <p className="text-muted-foreground">
-            The Agent Capability Negotiation and Binding Protocol (ACNBP) provides a standardized framework
-            for dynamic interaction and collaboration in multi-agent systems. This platform offers tools to understand and implement
-            key aspects of the protocol, from initial capability negotiation to secure agent binding and intelligent offer assessment.
+            The Agent Name Service (ANS) provides a standardized framework
+            for dynamic discovery, interaction, and collaboration in multi-agent systems. This platform offers tools to understand and implement
+            key aspects of the protocol, from agent registration and secure identity establishment to name resolution and capability negotiation.
           </p>
         </CardContent>
       </Card>
