@@ -28,7 +28,7 @@ export default function ANSAgentRegistryPage() {
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({ form: false, list: true });
 
   // Form state
-  const [protocol, setProtocol] = useState<ANSProtocol | "">("");
+  const [protocol, setProtocol] = useState<ANSProtocol | "">("a2a"); // Initialized to "a2a"
   const [agentID, setAgentID] = useState("");
   const [agentCapability, setAgentCapability] = useState("");
   const [provider, setProvider] = useState("");
@@ -383,6 +383,7 @@ const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, l
     {children}
   </div>
 )
+
 
 
 
