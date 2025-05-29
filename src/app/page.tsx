@@ -3,7 +3,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card"; // Added CardHeader
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LayoutDashboard, BotMessageSquare, ListTree, ShieldCheck, BrainCircuit, ExternalLink } from "lucide-react";
@@ -26,7 +26,7 @@ const initialFeaturesData: Feature[] = [
     title: "Agent Name Service (ANS)",
     description: "Explore core ANS functionalities: agent registration in the ANS Registry and name resolution.",
     icon: ListTree,
-    href: "/agent-directory", 
+    href: "/agent-directory", // Link to agent-directory for registry, resolution link is separate
   },
   {
     title: "Secure Agent Binding",
@@ -74,7 +74,7 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle>About Agent Name Service (ANS)</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="pt-0"> {/* Adjusted padding here if CardHeader is present */}
           <p className="text-muted-foreground">
             The Agent Name Service (ANS) provides a standardized framework
             for dynamic discovery, interaction, and collaboration in multi-agent systems. This platform offers tools to understand and implement
