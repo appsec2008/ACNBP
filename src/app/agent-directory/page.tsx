@@ -113,8 +113,8 @@ export default function ANSAgentRegistryPage() {
                 if (typeof responseData.details === 'object' && responseData.details !== null) {
                     const formattedDetails = Object.entries(responseData.details as Record<string, any>)
                         .map(([field, fieldError]) => {
-                            if (fieldError && Array.isArray(fieldError._errors) && fieldError._errors.length > 0) {
-                                return `${field}: ${fieldError._errors.join(', ')}`;
+                            if (fieldError && Array.isArray((fieldError as any)._errors) && (fieldError as any)._errors.length > 0) {
+                                return `${field}: ${(fieldError as any)._errors.join(', ')}`;
                             }
                             return null;
                         })
@@ -249,9 +249,9 @@ export default function ANSAgentRegistryPage() {
               </FormItem>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading.form || !protocol || !agentID || !agentCapability || !provider || !version || !protocolExtensions}>
+              <Button type="submit" className="w-full" disabled={isLoading.form}>
                 {isLoading.form ? <Workflow className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />} 
-                Register Agent & Issue Certificate
+                Register Agent &amp; Issue Certificate
               </Button>
             </CardFooter>
           </form>
@@ -383,5 +383,6 @@ const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, l
     {children}
   </div>
 )
+
 
 
