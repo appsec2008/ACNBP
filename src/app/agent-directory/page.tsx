@@ -61,7 +61,7 @@ export default function ANSAgentRegistryPage() {
     setProvider("AcmeCorp");
     setVersion("1.0.0");
     setExtension("secure");
-    setProtocolExtensions(JSON.stringify({ "endpoint": "https://acme.example.com/api/translate", "customData": "value" }, null, 2));
+    setProtocolExtensions(JSON.stringify({ "endpoint": "https://acme.example.com/api/translate", "customData": {} }, null, 2));
   };
 
   useEffect(() => {
@@ -105,8 +105,35 @@ export default function ANSAgentRegistryPage() {
       const responseData = await response.json();
 
       if (!response.ok) {
-        const errorMsg = responseData.details ? JSON.stringify(responseData.details, null, 2) : responseData.error || "Failed to register agent.";
-        throw new Error(errorMsg);
+        // Attempt to parse error details if they are JSON, otherwise use the error string
+        let errorMessage = responseData.error || "Failed to register agent.";
+        if (responseData.details) {
+            try {
+                // Assuming details might be a Zod-formatted error object
+                if (typeof responseData.details === 'object' && responseData.details !== null) {
+                    const formattedDetails = Object.entries(responseData.details as Record<string, any>)
+                        .map(([field, fieldError]) => {
+                            if (fieldError && Array.isArray(fieldError._errors) && fieldError._errors.length > 0) {
+                                return `${field}: ${fieldError._errors.join(', ')}`;
+                            }
+                            return null;
+                        })
+                        .filter(Boolean)
+                        .join('; ');
+                    if (formattedDetails) {
+                        errorMessage = `${errorMessage} Details: ${formattedDetails}`;
+                    } else {
+                         errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
+                    }
+                } else {
+                    errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
+                }
+            } catch (e) {
+                 // If details parsing fails, just append raw string
+                errorMessage = `${errorMessage} Details: ${String(responseData.details)}`;
+            }
+        }
+        throw new Error(errorMessage);
       }
       
       toast({ title: "Agent Registered", description: `${responseData.ansName} has been successfully added. Its certificate has been issued by the CA.` });
@@ -117,8 +144,8 @@ export default function ANSAgentRegistryPage() {
          title: "Registration Failed",
          description: error.message || "An unexpected error occurred.",
          variant: "destructive",
-         duration: 10000,
-         className: "max-w-md" 
+         duration: 10000, // Increased duration for potentially longer error messages
+         className: "max-w-md whitespace-pre-wrap" // Allow pre-wrap for better formatting of long messages
        });
     } finally {
       setIsLoading(prev => ({...prev, form: false}));
@@ -356,3 +383,5 @@ const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, l
     {children}
   </div>
 )
+
+
