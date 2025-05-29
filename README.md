@@ -1,4 +1,4 @@
-md
+
 # Agent Name Service (ANS) Platform
 
 **Author:** Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff
@@ -147,7 +147,7 @@ Please ensure your code is well-formatted and, if adding new features, consider 
 
 If you use this ANS Platform in your research or work, please consider citing the associated paper:
 
-Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff ([YEAR_OF_PUBLICATION]). *Agent Name Service (ANS): A Universal Directory for Secure AI Agent Discovery and Interoperability*. arXiv preprint arXiv:[ARXIV_ID_HERE, e.g., 2505.XXXXX]. Retrieved from [FULL_URL_TO_ARXIV_PAPER, e.g., https://arxiv.org/abs/2505.XXXXX]
+Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff (2024). *Agent Name Service (ANS): A Universal Directory for Secure AI Agent Discovery and Interoperability*. arXiv preprint arXiv:2505.10609. Retrieved from https://arxiv.org/abs/2505.10609
 
 You can also refer to this software implementation:
 
