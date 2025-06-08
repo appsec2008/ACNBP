@@ -53,7 +53,7 @@ export default function CapabilityNegotiationPage() {
       
       const sortedResults = data.results.sort((a, b) => {
         const statusOrder = { 'success': 1, 'partial': 2, 'failed': 3, 'capability_mismatch': 4 };
-        if (statusOrder[a.matchStatus] !== statusOrder[b.matchStatus]) {
+        if (a.matchStatus !== b.matchStatus) {
           return statusOrder[a.matchStatus] - statusOrder[b.matchStatus];
         }
         if (a.aiScore !== undefined && b.aiScore !== undefined) {
@@ -61,8 +61,8 @@ export default function CapabilityNegotiationPage() {
         }
         if (a.aiScore !== undefined) return -1;
         if (b.aiScore !== undefined) return 1;
-        // Fallback for services without AI scores, maintain original order or sort by name
-        if (a.service.name && b.service.name) {
+        
+        if (a.service && b.service && a.service.name && b.service.name) {
           return a.service.name.localeCompare(b.service.name);
         }
         return 0;
@@ -91,7 +91,7 @@ export default function CapabilityNegotiationPage() {
         variant: "destructive",
       });
        setNegotiationResults([{
-            service: {id: "system-error", name: "System Error", capability: "N/A", description: "N/A", qos:0, cost:0, protocol: "N/A", ansEndpoint: "N/A"},
+            service: {id: "system-error", name: "System Error", capability: "N/A", description: "N/A", qos:undefined, cost:undefined, protocol: "N/A", ansEndpoint: "N/A"},
             matchStatus: 'failed',
             matchMessage: `Negotiation process failed: ${error.message || "Unknown error"}`
         }]);
@@ -179,61 +179,66 @@ export default function CapabilityNegotiationPage() {
                 <p className="text-muted-foreground">Negotiating and evaluating offers...</p>
               </div>
             )}
-            {negotiationResults.map((result, index) => (
-              <Card key={result.service.id || index} className="p-4 bg-card/50">
-                <div className="flex items-start space-x-3">
-                  {result.matchStatus === 'success' && <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />}
-                  {result.matchStatus === 'partial' && <Search className="h-5 w-5 text-yellow-500 mt-1 flex-shrink-0" />}
-                  {(result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') && result.service.id !== "system-error" && result.service.name !== "System Message" && <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />}
-                  {(result.service.id === "system-error" || result.service.name === "System Message") && <AlertTriangle className="h-5 w-5 text-destructive mt-1 flex-shrink-0" />}
-                  
-                  <div className="flex-grow">
-                    <CardTitle className="text-lg mb-1">{result.service.name || 'System Message'}</CardTitle>
-                    {result.service.name !== "System Message" && result.service.id !== "system-error" && (
-                        <>
-                            <p className="text-sm text-muted-foreground">Offered Capability: <Badge variant="secondary">{result.service.capability}</Badge></p>
-                             <p className="text-xs text-muted-foreground mt-0.5">{result.service.description}</p>
-                            <div className="flex flex-wrap gap-2 mt-2 text-sm">
-                                <Badge variant="outline">QoS: {typeof result.service.qos === 'number' ? result.service.qos.toFixed(2) : 'N/A'}</Badge>
-                                <Badge variant="outline">Cost: {typeof result.service.cost === 'number' ? `$${result.service.cost.toFixed(2)}` : 'N/A'}</Badge>
-                                <Badge variant="outline">Protocol: {result.service.protocol}</Badge>
-                                {result.service.ansEndpoint && result.matchStatus !== 'capability_mismatch' && (
-                                  <Badge variant="outline" className="bg-primary/10 border-primary/50">
-                                    <Share2 className="mr-1 h-3 w-3 text-primary" />
-                                    ANS: {result.service.ansEndpoint}
-                                  </Badge>
-                                )}
-                            </div>
-                        </>
-                    )}
-                    <p className={`text-sm mt-2 font-medium ${
-                        result.matchStatus === 'success' ? 'text-green-700' :
-                        result.matchStatus === 'partial' ? 'text-yellow-700' :
-                        (result.service.id === "system-error" || result.service.name === "System Message" || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
-                        'text-red-700' // Default fallback, though should be covered.
-                    }`}>{result.matchMessage}</p>
+            {negotiationResults.map((result, index) => {
+              const service = result.service;
+              const isSystemMessage = service && (service.id === "system-error" || service.id === "system-no-match" || service.id === "system-no-agents" || service.name === "System Message");
 
-                    {result.aiScore !== undefined && result.aiReasoning && (
-                      <Card className="mt-3 p-3 bg-background shadow-sm border-dashed">
-                        <div className="flex items-center mb-1">
-                          <ShieldQuestion className="h-5 w-5 text-primary mr-2" />
-                          <p className="text-sm font-semibold text-primary">AI Evaluation:</p>
-                        </div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Badge className={result.aiScore > 70 ? "bg-accent text-accent-foreground" : result.aiScore > 40 ? "bg-yellow-400 text-yellow-900" : "bg-destructive text-destructive-foreground"}>
-                              <Star className="mr-1 h-3 w-3" /> Score: {result.aiScore.toFixed(0)}/100
-                            </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground flex items-start">
-                          <FileText className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
-                          <span><span className="font-medium">Reasoning:</span> {result.aiReasoning}</span>
-                        </p>
-                      </Card>
-                    )}
+              return (
+                <Card key={service?.id || index} className="p-4 bg-card/50">
+                  <div className="flex items-start space-x-3">
+                    {result.matchStatus === 'success' && <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />}
+                    {result.matchStatus === 'partial' && <Search className="h-5 w-5 text-yellow-500 mt-1 flex-shrink-0" />}
+                    {(result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') && !isSystemMessage && <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />}
+                    {isSystemMessage && <AlertTriangle className="h-5 w-5 text-destructive mt-1 flex-shrink-0" />}
+                    
+                    <div className="flex-grow">
+                      <CardTitle className="text-lg mb-1">{service?.name || 'System Message'}</CardTitle>
+                      {service && !isSystemMessage && (
+                          <>
+                              <p className="text-sm text-muted-foreground">Offered Capability: <Badge variant="secondary">{service.capability}</Badge></p>
+                               <p className="text-xs text-muted-foreground mt-0.5">{service.description || 'N/A'}</p>
+                              <div className="flex flex-wrap gap-2 mt-2 text-sm">
+                                  <Badge variant="outline">QoS: {typeof service.qos === 'number' ? service.qos.toFixed(2) : 'N/A'}</Badge>
+                                  <Badge variant="outline">Cost: {typeof service.cost === 'number' ? `$${service.cost.toFixed(2)}` : 'N/A'}</Badge>
+                                  <Badge variant="outline">Protocol: {service.protocol || 'N/A'}</Badge>
+                                  {service.ansEndpoint && result.matchStatus !== 'capability_mismatch' && (
+                                    <Badge variant="outline" className="bg-primary/10 border-primary/50">
+                                      <Share2 className="mr-1 h-3 w-3 text-primary" />
+                                      ANS: {service.ansEndpoint}
+                                    </Badge>
+                                  )}
+                              </div>
+                          </>
+                      )}
+                      <p className={`text-sm mt-2 font-medium ${
+                          result.matchStatus === 'success' ? 'text-green-700' :
+                          result.matchStatus === 'partial' ? 'text-yellow-700' :
+                          (isSystemMessage || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
+                          'text-red-700'
+                      }`}>{result.matchMessage}</p>
+
+                      {result.aiScore !== undefined && result.aiReasoning && (
+                        <Card className="mt-3 p-3 bg-background shadow-sm border-dashed">
+                          <div className="flex items-center mb-1">
+                            <ShieldQuestion className="h-5 w-5 text-primary mr-2" />
+                            <p className="text-sm font-semibold text-primary">AI Evaluation:</p>
+                          </div>
+                          <div className="flex items-center gap-2 mb-1">
+                              <Badge className={result.aiScore > 70 ? "bg-accent text-accent-foreground" : result.aiScore > 40 ? "bg-yellow-400 text-yellow-900" : "bg-destructive text-destructive-foreground"}>
+                                <Star className="mr-1 h-3 w-3" /> Score: {result.aiScore.toFixed(0)}/100
+                              </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground flex items-start">
+                            <FileText className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
+                            <span><span className="font-medium">Reasoning:</span> {result.aiReasoning}</span>
+                          </p>
+                        </Card>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </CardContent>
         </Card>
       </div>

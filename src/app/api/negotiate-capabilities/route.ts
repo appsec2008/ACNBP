@@ -46,18 +46,17 @@ export async function POST(request: NextRequest) {
             agentCost = parsedProtocolExtensions.cost;
         } else if (agent.protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.defaultCost === 'number') {
             agentCost = parsedProtocolExtensions.a2aAgentCard.defaultCost;
-        } else if (parsedProtocolExtensions.defaultCosts?.fixedCost) { // From ACNBP common definitions
+        } else if (parsedProtocolExtensions.defaultCosts?.fixedCost) { 
             agentCost = parsedProtocolExtensions.defaultCosts.fixedCost;
         }
 
 
-        let agentQos: number | undefined = undefined; // Expecting 0-1 scale
+        let agentQos: number | undefined = undefined; 
         if (typeof parsedProtocolExtensions.qos === 'number' && parsedProtocolExtensions.qos >= 0 && parsedProtocolExtensions.qos <= 1) {
             agentQos = parsedProtocolExtensions.qos;
         } else if (agent.protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.defaultQos === 'number' ) {
             agentQos = parsedProtocolExtensions.a2aAgentCard.defaultQos;
-        } else if (parsedProtocolExtensions.defaultQoS?.customParameters?.overallSatisfaction) { // Example custom QoS field
-             // Assuming overallSatisfaction is a 0-1 score
+        } else if (parsedProtocolExtensions.defaultQoS?.customParameters?.overallSatisfaction) { 
             const customQos = parsedProtocolExtensions.defaultQoS.customParameters.overallSatisfaction;
             if (typeof customQos === 'number' && customQos >=0 && customQos <=1) {
                 agentQos = customQos;
@@ -108,6 +107,7 @@ export async function POST(request: NextRequest) {
                 try {
                     const pExt = JSON.parse(agentRecord.protocolExtensions as string);
                     if (pExt.a2aAgentCard && Array.isArray(pExt.a2aAgentCard.skills) && pExt.a2aAgentCard.skills.length > 0) {
+                        messages.push(`A2A Agent: Evaluating ${pExt.a2aAgentCard.skills.length} skill(s) from AgentCard.`);
                         for (const skill of pExt.a2aAgentCard.skills) {
                             const skillIdNorm = skill.id ? normalizeCapability(skill.id) : "";
                             const skillNameNorm = skill.name ? normalizeCapability(skill.name) : "";
@@ -127,9 +127,13 @@ export async function POST(request: NextRequest) {
                             capabilityMatched = true; 
                         } else if (!primaryCapabilityMatched) { 
                             messages.push(`A2A agent: None of the listed skills in 'a2aAgentCard.skills' matched '${desiredCapability}'.`);
+                        } else {
+                            messages.push(`A2A agent: Primary capability matched, but no specific A2A skills from AgentCard matched '${desiredCapability}'.`);
                         }
                     } else if (!primaryCapabilityMatched) { 
                          messages.push(`A2A agent: 'a2aAgentCard.skills' not found, not an array, or empty. Cannot match specific A2A skills for '${desiredCapability}'.`);
+                    } else {
+                         messages.push(`A2A agent: 'a2aAgentCard.skills' not found or empty (primary capability already matched).`);
                     }
                 } catch (e) {
                     if (!primaryCapabilityMatched) { 
@@ -145,7 +149,7 @@ export async function POST(request: NextRequest) {
             }
         } else {
              messages.push(`Error: Could not find original registration details for service ID ${service.id} to perform capability/skill matching.`);
-             capabilityMatched = false; // Ensure it's false if agentRecord not found
+             capabilityMatched = false; 
         }
       }
 
@@ -209,10 +213,10 @@ export async function POST(request: NextRequest) {
       if (capabilityMatched && serviceMatchStatus !== 'failed' && serviceMatchStatus !== 'capability_mismatch') {
          offersForAI.push({
           id: service.id,
-          description: service.description, // Already sourced dynamically
-          cost: service.cost, // Already sourced dynamically or undefined
-          qos: service.qos, // Already sourced dynamically or undefined
-          protocolCompatibility: service.protocol, // From agent registration
+          description: service.description, 
+          cost: service.cost, 
+          qos: service.qos, 
+          protocolCompatibility: service.protocol, 
         });
       }
     });
@@ -294,7 +298,16 @@ export async function POST(request: NextRequest) {
     }
     const errorResponse: NegotiationApiResponse = {
         results: [{
-            service: {id: "system-error", name: "System Error", capability: "N/A", description: `Server error: ${message}`, protocol: "N/A", ansEndpoint: "N/A"},
+            service: {
+                id: "system-error", 
+                name: "System Error", 
+                capability: "N/A", 
+                description: `Server error: ${message}`, 
+                protocol: "N/A", 
+                ansEndpoint: "N/A",
+                qos: undefined, 
+                cost: undefined
+            },
             matchStatus: 'failed',
             matchMessage: `Server error: ${message}`
         }],
@@ -304,5 +317,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorResponse, { status: 500 });
   }
 }
-
     
