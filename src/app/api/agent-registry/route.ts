@@ -17,23 +17,37 @@ const registrationRequestSchema = z.object({
   protocolExtensions: z.record(z.any()) // Basic type, detailed validation moved to superRefine
 }).superRefine((data, ctx) => {
   if (data.protocol === "a2a") {
-    if (!data.protocolExtensions.a2aAgentCard || 
-        typeof data.protocolExtensions.a2aAgentCard !== 'object' ||
-        data.protocolExtensions.a2aAgentCard === null || // Ensure a2aAgentCard is not null
-        !data.protocolExtensions.a2aAgentCard.url ||
-        typeof data.protocolExtensions.a2aAgentCard.url !== 'string') {
+    if (!data.protocolExtensions.a2aAgentCard) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["protocolExtensions"],
-        message: "For A2A protocol, protocolExtensions must contain an 'a2aAgentCard' object with a valid 'url' string property.",
+        path: ["protocolExtensions", "a2aAgentCard"],
+        message: "For A2A protocol, 'protocolExtensions' must contain an 'a2aAgentCard' object.",
+      });
+    } else if (typeof data.protocolExtensions.a2aAgentCard !== 'object' || data.protocolExtensions.a2aAgentCard === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["protocolExtensions", "a2aAgentCard"],
+        message: "'a2aAgentCard' in 'protocolExtensions' must be a valid object and not null.",
+      });
+    } else if (!data.protocolExtensions.a2aAgentCard.url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["protocolExtensions", "a2aAgentCard", "url"],
+        message: "The 'a2aAgentCard' object must contain a 'url' property.",
+      });
+    } else if (typeof data.protocolExtensions.a2aAgentCard.url !== 'string') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["protocolExtensions", "a2aAgentCard", "url"],
+        message: "The 'a2aAgentCard.url' property must be a string.",
       });
     }
   } else { // For 'mcp', 'acp', 'other'
     if (!data.protocolExtensions.endpoint || typeof data.protocolExtensions.endpoint !== 'string') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["protocolExtensions"],
-        message: "Protocol extensions must contain an 'endpoint' string property.",
+        path: ["protocolExtensions", "endpoint"],
+        message: "For this protocol, protocolExtensions must contain an 'endpoint' string property.",
       });
     }
   }
