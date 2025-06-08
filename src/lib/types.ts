@@ -6,8 +6,8 @@ export interface AgentService {
   name: string; // Human-readable name of the service
   capability: string; // Core capability offered (e.g., "Image Recognition", "Text Summarization")
   description: string; // Detailed description of the service
-  qos: number; // Quality of Service score (0.0 to 1.0)
-  cost: number; // Cost of using the service
+  qos?: number; // Quality of Service score (0.0 to 1.0) - Optional
+  cost?: number; // Cost of using the service - Optional
   protocol: string; // Communication protocol supported (e.g., "ACNBP-Vision/1.0")
   ansEndpoint: string; // Agent Name Service endpoint (e.g., "a2a://ImagePro.ImageRecognition.VisionCorp.v1.2.0.gpu-optimized")
 }
@@ -109,8 +109,8 @@ export interface ANSCapabilityResponse {
 export interface CapabilityOfferForAI {
   id: string;
   description: string;
-  cost: number;
-  qos: number;
+  cost?: number;
+  qos?: number;
   protocolCompatibility: string;
 }
 
@@ -119,8 +119,8 @@ export interface CapabilityOfferForAI {
 export interface EvaluatedOfferFromAI {
   id:string;
   description: string;
-  cost: number;
-  qos: number;
+  cost?: number;
+  qos?: number;
   protocolCompatibility: string;
   score: number;
   reasoning: string;
