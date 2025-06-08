@@ -242,7 +242,7 @@ export default function CapabilityNegotiationPage() {
             <CardTitle>Negotiation Outcomes</CardTitle>
             <CardDescription>Results of the negotiation process with available agents.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+          <CardContent className="space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto pr-2"> {/* Increased max-h slightly */}
             {negotiationResults.length === 0 && !isLoading && (
               <p className="text-muted-foreground text-center py-8">Enter criteria and initiate negotiation to see outcomes.</p>
             )}
@@ -298,9 +298,9 @@ export default function CapabilityNegotiationPage() {
                           'text-red-700 dark:text-red-400' 
                       }`}>{result.matchMessage}</p>
 
-                      {service.protocol === 'a2a' && (
+                      {service && service.protocol === 'a2a' && (
                         <Accordion type="single" collapsible className="w-full mt-3">
-                          <AccordionItem value="a2a-agent-card-details" className="border-t pt-2">
+                          <AccordionItem value={`${service.id}-a2a-details`} className="border-t pt-2">
                              <AccordionTrigger className="text-sm font-medium hover:no-underline py-2 text-primary hover:text-primary/80">
                                 <PackageCheck className="mr-2 h-4 w-4" /> Google A2A Agent Card Details
                             </AccordionTrigger>
@@ -320,18 +320,20 @@ export default function CapabilityNegotiationPage() {
                                 ) : (
                                     <p className="text-xs text-muted-foreground py-1.5">No specific skills listed in Agent Card, or card not fully parsed.</p>
                                 )}
-                                <AccordionItem value="a2a-agent-card-example" className="border-t border-b-0 pt-2 mt-2">
-                                  <AccordionTrigger className="text-xs font-medium hover:no-underline py-1.5 text-muted-foreground hover:text-muted-foreground/80">
-                                    <FileJson className="mr-2 h-3 w-3" /> View Example AgentCard JSON Structure
-                                  </AccordionTrigger>
-                                  <AccordionContent className="pt-1 pb-1 pl-1 pr-0.5 bg-muted/20 rounded-md">
-                                    <ScrollArea className="h-40"> 
-                                      <pre className="text-xs bg-background/70 p-1.5 rounded-sm whitespace-pre-wrap break-all font-mono">
-                                        {exampleA2AAgentCardJson}
-                                      </pre>
-                                    </ScrollArea>
-                                  </AccordionContent>
-                                </AccordionItem>
+                                <Accordion type="single" collapsible className="w-full mt-2">
+                                  <AccordionItem value={`${service.id}-a2a-example`} className="border-t border-b-0 pt-2 mt-2">
+                                    <AccordionTrigger className="text-xs font-medium hover:no-underline py-1.5 text-muted-foreground hover:text-muted-foreground/80">
+                                      <FileJson className="mr-2 h-3 w-3" /> View Example AgentCard JSON Structure
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pt-1 pb-1 pl-1 pr-0.5 bg-muted/20 rounded-md">
+                                      <ScrollArea className="h-40"> 
+                                        <pre className="text-xs bg-background/70 p-1.5 rounded-sm whitespace-pre-wrap break-all font-mono">
+                                          {exampleA2AAgentCardJson}
+                                        </pre>
+                                      </ScrollArea>
+                                    </AccordionContent>
+                                  </AccordionItem>
+                                </Accordion>
                             </AccordionContent>
                           </AccordionItem>
                         </Accordion>
