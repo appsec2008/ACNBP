@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         try {
             parsedProtocolExtensions = JSON.parse(agent.protocolExtensions as string);
         } catch (e) {
-            console.warn(`Could not parse protocolExtensions for agent ${agent.id}: ${e}`);
+            console.warn(`Could not parse protocolExtensions for agent ${agent.id} (${agent.ansName}): ${e}`);
         }
 
         let agentDescription = `Agent offering ${agent.agentCapability}`;
@@ -64,13 +64,18 @@ export async function POST(request: NextRequest) {
         }
 
         let agentSkills: Skill[] | undefined = undefined;
-        if (agent.protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && Array.isArray(parsedProtocolExtensions.a2aAgentCard.skills)) {
-            agentSkills = parsedProtocolExtensions.a2aAgentCard.skills.map((s: any) => ({
-                id: s.id || "unknown-skill-id",
-                name: s.name || s.id || "Unknown Skill",
-                description: s.description,
-                tags: s.tags,
-            }));
+        if (agent.protocol === 'a2a') {
+            if (parsedProtocolExtensions.a2aAgentCard && Array.isArray(parsedProtocolExtensions.a2aAgentCard.skills)) {
+                agentSkills = parsedProtocolExtensions.a2aAgentCard.skills.map((s: any) => ({
+                    id: s.id || "unknown-skill-id",
+                    name: s.name || s.id || "Unknown Skill",
+                    description: s.description,
+                    tags: s.tags,
+                }));
+            } else {
+                // Diagnostic log for A2A agents missing skills structure
+                console.warn(`[API CapNeg] A2A agent ${agent.id} (${agent.ansName}) did not have a valid 'a2aAgentCard.skills' array. ProtocolExtensions might be malformed or missing this structure. Parsed protocolExtensions (first 500 chars): ${JSON.stringify(parsedProtocolExtensions, null, 2).substring(0,500)}`);
+            }
         }
 
 
@@ -83,8 +88,8 @@ export async function POST(request: NextRequest) {
             cost: agentCost,
             protocol: agent.protocol,
             ansEndpoint: agent.ansName,
-            skills: agentSkills, // Add extracted skills
-            protocolExtensions: parsedProtocolExtensions // Include full extensions for potential future use or detailed display
+            skills: agentSkills, 
+            protocolExtensions: parsedProtocolExtensions 
         };
         
         potentialServices.push(currentService);
@@ -92,8 +97,8 @@ export async function POST(request: NextRequest) {
 
 
     const normalizedDesiredCapability = desiredCapability ? normalizeCapability(desiredCapability) : "";
-    const isQoSIgnored = requiredQos <= 0.001; // Consider 0 or very small as "ignore"
-    const isCostIgnored = maxCost >= 999999; // Consider very large as "ignore"
+    const isQoSIgnored = requiredQos <= 0.001; 
+    const isCostIgnored = maxCost >= 999999; 
 
     potentialServices.forEach(service => {
       let serviceMatchStatus: NegotiationResult['matchStatus'] = 'failed'; 
@@ -136,14 +141,10 @@ export async function POST(request: NextRequest) {
                     capabilityMatched = true; 
                 } else if (!primaryCapabilityMatched) { 
                     messages.push(`A2A agent: None of the listed skills in AgentCard matched '${desiredCapability}'.`);
-                } else {
-                    // Primary matched, but no specific skills did. This is okay if primary is sufficient.
                 }
             } else if (service.protocol === 'a2a' && (!service.skills || service.skills.length === 0)){
                  if (!primaryCapabilityMatched) { 
-                     messages.push(`A2A agent: AgentCard skills not found or empty. Primary capability did not match '${desiredCapability}'.`);
-                 } else {
-                    // Primary matched, no specific skills needed or listed.
+                     messages.push(`A2A agent: AgentCard skills not found, empty, or not applicable. Primary capability did not match '${desiredCapability}'.`);
                  }
             }
         
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
             const resultToUpdate = finalFilteredResults.find(r => r.service.id === aiEval.id);
             if (resultToUpdate) {
               resultToUpdate.aiScore = aiEval.score;
-              resultToUpdate.aiReasoning = aiEval.reasoning;
+              resultToUpdate.aiReasoning = aiEval.aiReasoning;
             }
           });
           aiEvaluationStatus = 'success';
@@ -281,7 +282,9 @@ export async function POST(request: NextRequest) {
                 qos:undefined, 
                 cost:undefined, 
                 protocol: "N/A", 
-                ansEndpoint: "N/A"
+                ansEndpoint: "N/A",
+                skills: undefined, 
+                protocolExtensions: undefined
             },
             matchStatus: 'failed', 
             matchMessage: "No agents found matching the desired capability and other specified criteria after filtering from registered agents."
@@ -296,7 +299,9 @@ export async function POST(request: NextRequest) {
                 qos:undefined, 
                 cost:undefined, 
                 protocol: "N/A", 
-                ansEndpoint: "N/A"
+                ansEndpoint: "N/A",
+                skills: undefined,
+                protocolExtensions: undefined
             },
             matchStatus: 'failed',
             matchMessage: "No agents available in the ANS registry to evaluate."
@@ -327,7 +332,9 @@ export async function POST(request: NextRequest) {
                 protocol: "N/A", 
                 ansEndpoint: "N/A",
                 qos: undefined, 
-                cost: undefined
+                cost: undefined,
+                skills: undefined,
+                protocolExtensions: undefined
             },
             matchStatus: 'failed',
             matchMessage: `Server error: ${message}`
