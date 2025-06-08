@@ -1,126 +1,140 @@
 
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ProtocolExtension (PE)",
-  "description": "Conceptual schema for a ProtocolExtension document as used in ACNBP. Contains protocol-specific information, detailed capability descriptions, skills, costs, QoS parameters, security attestations, etc. This is a generic template; specific protocols (A2A, MCP, ACP) would have their own detailed PE schemas.",
+  "title": "ProtocolExtension (PE) Content",
+  "description": "Schema for the content of a ProtocolExtension (PE) as stored in the ANS Agent Registry and exchanged in ACNBP messages. This object contains protocol-specific information. For A2A, it includes an 'a2aAgentCard'. For other protocols, it might directly contain an 'endpoint' and other details. Top-level 'cost' and 'qos' are also supported for easier parsing by negotiation logic, though they might also be within specific card structures like A2A's.",
   "type": "object",
   "properties": {
-    "protocolName": {
+    "a2aAgentCard": {
+      "$ref": "#/definitions/A2AAgentCard",
+      "description": "Optional: The A2A AgentCard. This field SHOULD be populated if the agent's protocol is 'A2A'."
+    },
+    "endpoint": {
       "type": "string",
-      "description": "Name of the specific communication protocol this PE adheres to (e.g., 'A2A', 'MCP', 'ACP')."
+      "format": "uri",
+      "description": "Optional: Direct service endpoint URL. Typically used for non-A2A protocols if 'a2aAgentCard' is not applicable. For A2A, the endpoint is within the 'a2aAgentCard.url'."
     },
-    "protocolVersion": {
-      "type": "string",
-      "description": "Version of the communication protocol."
-    },
-    "agentId": {
+    "description": {
         "type": "string",
-        "description": "The unique identifier of the agent this PE belongs to."
+        "description": "Optional: A general description for this protocol extension, if not covered by a specific card like A2A."
     },
-    "ansName": {
-        "type": "string",
-        "format": "uri",
-        "description": "The ANS Name of the agent."
+    "cost": {
+      "type": "number",
+      "description": "Optional: A top-level numeric cost for the service, for easier evaluation. Can also be specified within protocol-specific cards (e.g., a2aAgentCard.defaultCost)."
     },
-    "offeredCapabilities": {
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "capabilityId": {
-                    "type": "string",
-                    "description": "A unique identifier for the capability (e.g., 'DocumentTranslation', 'RiskAssessment')."
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Human-readable description of the capability."
-                },
-                "skills": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "acnbp-common.definitions.schema.json#/definitions/Skill"
-                    },
-                    "description": "Detailed list of specific skills offered under this capability."
-                },
-                "defaultCosts": {
-                    "$ref": "acnbp-common.definitions.schema.json#/definitions/Costs",
-                    "description": "Default cost structure for this capability."
-                },
-                "defaultQoS": {
-                    "$ref": "acnbp-common.definitions.schema.json#/definitions/QoS",
-                    "description": "Default Quality of Service parameters for this capability."
-                }
-            },
-            "required": ["capabilityId", "description", "skills"]
-        }
+    "qos": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Optional: A top-level Quality of Service score (0.0 to 1.0), for easier evaluation. Can also be specified within protocol-specific cards (e.g., a2aAgentCard.defaultQos)."
     },
-    "communicationEndpoints": {
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "protocol": {"type": "string", "description": "e.g., HTTPS, gRPC, A2A-specific"},
-                "url": {"type": "string", "format": "uri"},
-                "authenticationMethod": {"type": "string"}
-            },
-            "required": ["protocol", "url"]
-        }
+    "parametersSchema": {
+        "type": "object",
+        "description": "Optional: JSON schema for parameters, if not part of a specific card structure."
     },
-    "securityProfile": {
-      "type": "object",
-      "properties": {
-        "complianceAttestations": {
-          "type": "array",
-          "items": {
-            "$ref": "acnbp-common.definitions.schema.json#/definitions/ComplianceAttestation"
-          },
-          "description": "List of compliance attestations (e.g., HIPAA, GDPR, ISO27001)."
-        },
-        "securityFeatures": {
-            "type": "array",
-            "items": {
-                "$ref": "acnbp-common.definitions.schema.json#/definitions/SecurityFeature"
-            },
-            "description": "Specific security features implemented by the agent."
-        },
-        "dataHandlingPoliciesUrl": {
-            "type": "string",
-            "format": "uri",
-            "description": "URL to detailed data handling and privacy policies."
-        }
-      }
+    "outputSchema": {
+        "type": "object",
+        "description": "Optional: JSON schema for output, if not part of a specific card structure."
     },
-    "supportedMessageFormats": {
-        "type": "array",
-        "items": {"type": "string"},
-        "description": "E.g., ['application/json', 'application/xml', 'application/protobuf']"
-    },
-    "termsOfServiceUrl": {
-        "type": "string",
-        "format": "uri",
-        "description": "URL to the agent's terms of service."
-    },
-    "customFields": {
-      "type": "object",
-      "additionalProperties": true,
-      "description": "Protocol-specific or vendor-specific extension fields."
-    },
-    "lastUpdated": {
-        "type": "string",
-        "format": "date-time",
-        "description": "Timestamp of when this ProtocolExtension was last updated."
-    },
-    "signature": {
-        "type": "string",
-        "description": "Optional: A digital signature from the agent/provider over this PE document to ensure its integrity."
+    "customData": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Optional: Any other protocol-specific or custom fields not covered above."
     }
   },
-  "required": [
-    "protocolName",
-    "protocolVersion",
-    "agentId",
-    "ansName",
-    "offeredCapabilities",
-    "communicationEndpoints"
-  ]
+  "additionalProperties": false,
+  "definitions": {
+    "A2AAgentCapabilities": {
+      "type": "object",
+      "properties": {
+        "streaming": { "type": "boolean", "description": "Indicates if the agent supports streaming responses." },
+        "pushNotifications": { "type": "boolean", "description": "Indicates if the agent can send push notifications." },
+        "stateTransitionHistory": { "type": "boolean", "description": "Indicates if the agent maintains state transition history." },
+        "batchProcessing": { "type": "boolean", "description": "Indicates if the agent supports batch processing of requests." }
+      },
+      "additionalProperties": true
+    },
+    "A2ASecuritySchemeItem": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "description": "Type of the security scheme (e.g., 'http', 'apiKey', 'oauth2')." },
+        "scheme": { "type": "string", "description": "For 'http' type, the scheme (e.g., 'bearer')." },
+        "in": { "type": "string", "description": "For 'apiKey' type, location of the API key (e.g., 'header', 'query')." },
+        "name": { "type": "string", "description": "For 'apiKey' type, the name of the header or query parameter." },
+        "flows": { "type": "object", "description": "For 'oauth2' type, details about the OAuth flows." },
+        "description": { "type": "string", "description": "A short description for the security scheme." }
+      },
+      "additionalProperties": true
+    },
+    "A2AProviderInfo": {
+      "type": "object",
+      "properties": {
+        "organization": { "type": "string", "description": "Name of the organization providing the agent." },
+        "url": { "type": "string", "format": "uri", "description": "URL of the provider organization." }
+      },
+      "required": ["organization"]
+    },
+    "A2AAgentCard": {
+      "title": "A2A AgentCard",
+      "description": "Structure of an Agent-to-Agent (A2A) AgentCard.",
+      "type": "object",
+      "properties": {
+        "version": { "type": "string", "description": "Version of the AgentCard schema or agent." },
+        "name": { "type": "string", "description": "Human-readable name of the A2A agent." },
+        "description": { "type": "string", "description": "Description of the A2A agent." },
+        "url": { "type": "string", "format": "uri", "description": "The primary invocation URL for the A2A agent." },
+        "skills": {
+          "type": "array",
+          "items": { "$ref": "acnbp-common.definitions.schema.json#/definitions/Skill" },
+          "description": "List of skills offered by the A2A agent."
+        },
+        "defaultInputModes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Default MIME types for input."
+        },
+        "defaultOutputModes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Default MIME types for output."
+        },
+        "capabilities": {
+          "$ref": "#/definitions/A2AAgentCapabilities",
+          "description": "Agent's capabilities like streaming support."
+        },
+        "securitySchemes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/A2ASecuritySchemeItem" },
+          "description": "Security schemes supported by the agent."
+        },
+        "security": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Security requirements for invoking the agent."
+        },
+        "provider": {
+          "$ref": "#/definitions/A2AProviderInfo",
+          "description": "Information about the agent provider."
+        },
+        "defaultCost": {
+          "type": "number",
+          "description": "Optional: Default cost for using the agent or its skills."
+        },
+        "defaultQos": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Optional: Default Quality of Service score (0.0 to 1.0)."
+        },
+        "customData": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Optional: Any other custom fields specific to this A2A AgentCard."
+        }
+      },
+      "required": ["version", "name", "url"]
+    }
+  }
 }
+
+    

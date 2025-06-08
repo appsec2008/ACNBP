@@ -6,12 +6,16 @@
   "definitions": {
     "Skill": {
       "title": "Skill",
-      "description": "A basic, atomic unit of workload or functionality that realizes a part of a capability, as defined in ACNBP.",
+      "description": "A basic, atomic unit of workload or functionality. For A2A, this maps to a skill defined in an AgentCard. For other protocols, it's a capability-specific skill.",
       "type": "object",
       "properties": {
         "skillId": {
           "type": "string",
-          "description": "A unique identifier for the skill within the provider's context (e.g., 'translate_paragraph_EN_to_JP', 'validate_HIPAA_compliance_for_data_X')."
+          "description": "A unique identifier for the skill (e.g., A2A skill ID, or provider-defined ID like 'translate_paragraph_EN_to_JP')."
+        },
+        "name": {
+          "type": "string",
+          "description": "A human-readable name for the skill (e.g., A2A skill name)."
         },
         "description": {
           "type": "string",
@@ -20,6 +24,11 @@
         "version": {
           "type": "string",
           "description": "Optional: Version of the skill."
+        },
+        "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional: Tags associated with the skill (e.g., A2A skill tags)."
         },
         "parametersSchema": {
           "type": "object",
@@ -40,7 +49,7 @@
             "additionalProperties": true
         }
       },
-      "required": ["skillId", "description"]
+      "required": ["skillId", "name", "description"]
     },
     "SkillSet": {
         "title": "SkillSet",
@@ -224,3 +233,5 @@
     }
   }
 }
+
+    
