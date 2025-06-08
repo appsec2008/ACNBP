@@ -4,7 +4,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ListTree, PlusCircle, Search, Server, Info, Fingerprint, FileJson, Globe, Tag, Package, Layers, Workflow, FileBadge, RefreshCcw, ShieldOff, CalendarClock, CalendarX } from "lucide-react";
+import { ListTree, PlusCircle, Search, Server, Info, Fingerprint, FileJson, Globe, Tag, Package, Layers, Workflow, FileBadge, RefreshCcw, ShieldOff, CalendarClock, CalendarX, DatabaseZap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,7 @@ export default function ANSAgentRegistryPage() {
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({ form: false, list: true });
+  const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({ form: false, list: true, seed: false });
   const [isClientMounted, setIsClientMounted] = useState(false);
 
   // Form state
@@ -66,7 +66,7 @@ export default function ANSAgentRegistryPage() {
           "version": "1.0.0",
           "name": currentAgentId || "MyA2AAgent",
           "description": `An A2A agent for ${currentAgentCapability || 'general tasks'}. Hosted by ${provider || 'DemoProvider'}.`,
-          "url": "https://example-a2a-agent.com/invoke",
+          "url": "https://example-a2a-agent.com/invoke", // Ensure URL is present
           "skills": [
             {
               "id": currentAgentCapability || "performTask",
@@ -95,8 +95,12 @@ export default function ANSAgentRegistryPage() {
           "provider": {
             "organization": provider || "DemoProvider",
             "url": "https://demoprovider.com"
-          }
+          },
+          "defaultCost": 50, // Example cost
+          "defaultQos": 0.9 // Example QoS (0-1)
         },
+        "cost": 50, // Top-level for easier parsing
+        "qos": 0.9,  // Top-level for easier parsing
         "customData": {
           "info": "Additional non-A2A specific extensions can go here."
         }
@@ -105,6 +109,9 @@ export default function ANSAgentRegistryPage() {
     // Default for other protocols or if protocol is empty
     return JSON.stringify({
       "endpoint": "https://some-generic-agent.com/api",
+      "description": "A generic agent endpoint.",
+      "cost": 20, // Example cost
+      "qos": 0.8, // Example QoS
       "customData": {}
     }, null, 2);
   };
@@ -130,7 +137,9 @@ export default function ANSAgentRegistryPage() {
 
   // Update protocolExtensions when protocol or agentID changes
   useEffect(() => {
-    setProtocolExtensions(generateProtocolExtensionsJson(protocol, agentID, agentCapability));
+    if (protocol || agentID || agentCapability || provider) { // Only regenerate if key fields are set
+        setProtocolExtensions(generateProtocolExtensionsJson(protocol, agentID, agentCapability));
+    }
   }, [protocol, agentID, agentCapability, provider]);
 
 
@@ -188,19 +197,33 @@ export default function ANSAgentRegistryPage() {
 
       if (!response.ok) {
         let errorMessage = responseData.error || "Failed to register agent.";
-        if (responseData.details) {
-          if (responseData.details._errors) { // Top-level errors
-            errorMessage = `${errorMessage} Details: ${responseData.details._errors.join('; ')}`;
-          } else { // Field-specific errors
-            const fieldErrors = Object.entries(responseData.details)
-              .filter(([key, value]: [string, any]) => value && Array.isArray(value._errors) && value._errors.length > 0)
-              .map(([key, value]: [string, any]) => `${key}: ${value._errors.join(', ')}`);
-            if (fieldErrors.length > 0) {
-              errorMessage = `${errorMessage} Details: ${fieldErrors.join('; ')}`;
-            } else {
-               errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
-            }
-          }
+        if (responseData.details) { // Zod error details
+             if (typeof responseData.details === 'object' && !Array.isArray(responseData.details)) {
+                 const fieldErrors = Object.entries(responseData.details)
+                    .map(([key, value]: [string, any]) => {
+                        if (value && Array.isArray(value._errors) && value._errors.length > 0) {
+                             return `${key}: ${value._errors.join(', ')}`;
+                        } else if (value && typeof value === 'object' && value._errors === undefined) { // Nested object like a2aAgentCard
+                            const nestedFieldErrors = Object.entries(value)
+                                .filter(([subKey, subValue]: [string, any]) => subValue && Array.isArray(subValue._errors) && subValue._errors.length > 0)
+                                .map(([subKey, subValue]: [string, any]) => `${key}.${subKey}: ${subValue._errors.join(', ')}`);
+                            return nestedFieldErrors.join('; ');
+                        }
+                        return null;
+                    })
+                    .filter(msg => msg !== null && msg.trim() !== '');
+                 if (fieldErrors.length > 0) {
+                     errorMessage = `${errorMessage} Details: ${fieldErrors.join('; ')}`;
+                 } else if (responseData.details._errors && Array.isArray(responseData.details._errors)){ // Top-level errors on the object itself
+                     errorMessage = `${errorMessage} Details: ${responseData.details._errors.join('; ')}`;
+                 } else {
+                     errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`; // Fallback for other structures
+                 }
+             } else if (Array.isArray(responseData.details)) { // Array of errors
+                 errorMessage = `${errorMessage} Details: ${responseData.details.map((d: any) => d.message || JSON.stringify(d)).join('; ')}`;
+             } else {
+                 errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
+             }
         }
         throw new Error(errorMessage);
       }
@@ -259,6 +282,32 @@ export default function ANSAgentRegistryPage() {
     }
   };
 
+  const handleSeedDatabase = async () => {
+    setIsLoading(prev => ({...prev, seed: true}));
+    try {
+      const response = await fetch('/api/seed-database', { method: 'POST' });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.details || data.error || "Failed to seed database.");
+      }
+      toast({
+        title: "Database Seeding",
+        description: data.message || "Database seeding process initiated.",
+        variant: response.status === 207 ? "default" : "default", // 207 is Multi-Status, could be partial success
+      });
+      fetchAgents(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        title: "Database Seeding Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({...prev, seed: false}));
+    }
+  };
+
 
   const filteredAgents = agents.filter(agent => 
     agent.ansName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -281,7 +330,7 @@ export default function ANSAgentRegistryPage() {
               <CardTitle className="flex items-center"><PlusCircle className="mr-2 h-5 w-5" /> Register New Agent</CardTitle>
               <CardDescription>Provide details to register an agent. A key pair and certificate will be generated and issued by the CA.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">
+            <CardContent className="space-y-4 max-h-[calc(100vh-320px)] overflow-y-auto pr-2">
               <div className="grid grid-cols-2 gap-4">
                 <FormItem Icon={Globe} label="Protocol" htmlFor="protocol">
                   <Select value={protocol} onValueChange={(value) => setProtocol(value as ANSProtocol)}>
@@ -315,20 +364,20 @@ export default function ANSAgentRegistryPage() {
               <FormItem Icon={FileJson} label="Protocol Extensions (JSON)" htmlFor="protocolExtensions">
                 <Textarea 
                   id="protocolExtensions" 
-                  placeholder={protocol === "a2a" ? '{ "a2aAgentCard": { "url": "...", ... }, ... }' : '{ "endpoint": "...", "customData": {} }'}
+                  placeholder={protocol === "a2a" ? '{ "a2aAgentCard": { "url": "...", ... }, "cost": 0.0, "qos": 0.0, ... }' : '{ "endpoint": "...", "cost": 0.0, "qos": 0.0, ... }'}
                   value={protocolExtensions} 
                   onChange={e => setProtocolExtensions(e.target.value)} 
                   required 
                   rows={10}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Must be valid JSON. For A2A, include an 'a2aAgentCard.url' string. For others, include an 'endpoint' string.
+                  Must be valid JSON. For A2A, include an 'a2aAgentCard.url' string. For others, include an 'endpoint' string. Cost/QoS can be top-level or in A2A card.
                 </p>
               </FormItem>
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading.form}>
-                {isLoading.form ? <Workflow className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />} 
+                {isLoading.form ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />} 
                 Register Agent &amp; Issue Certificate
               </Button>
             </CardFooter>
@@ -337,7 +386,13 @@ export default function ANSAgentRegistryPage() {
 
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center"><Server className="mr-2 h-5 w-5"/> Registered Agents</CardTitle>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <CardTitle className="flex items-center"><Server className="mr-2 h-5 w-5"/> Registered Agents</CardTitle>
+                <Button onClick={handleSeedDatabase} variant="outline" size="sm" disabled={isLoading.seed} className="w-full sm:w-auto">
+                    {isLoading.seed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-2 h-4 w-4" />}
+                    Seed Sample Agents
+                </Button>
+            </div>
             <div className="relative mt-2">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input 
@@ -349,9 +404,9 @@ export default function ANSAgentRegistryPage() {
               />
             </div>
           </CardHeader>
-          <CardContent className="max-h-[calc(100vh-220px)]">
+          <CardContent className="max-h-[calc(100vh-250px)]">
             <ScrollArea className="h-full">
-              {isLoading.list ? (
+              {isLoading.list && !agents.length ? (
                 <p className="text-muted-foreground text-center py-8">Loading agents...</p>
               ) : filteredAgents.length > 0 ? (
                 <Accordion type="single" collapsible className="w-full">
@@ -380,11 +435,11 @@ export default function ANSAgentRegistryPage() {
                           </p>
                            <p className="flex items-center">
                              <CalendarClock className="mr-1 h-3 w-3 text-green-600"/>
-                             <strong>Cert Valid From:</strong> {isClientMounted ? new Date(agent.agentCertificate.validFrom).toLocaleString() : agent.agentCertificate.validFrom}
+                             <strong>Cert Valid From:</strong> {isClientMounted && agent.agentCertificate.validFrom ? new Date(agent.agentCertificate.validFrom).toLocaleString() : agent.agentCertificate.validFrom}
                            </p>
                            <p className="flex items-center">
                              <CalendarClock className="mr-1 h-3 w-3 text-orange-600"/>
-                            <strong>Cert Valid To:</strong> {isClientMounted ? new Date(agent.agentCertificate.validTo).toLocaleString() : agent.agentCertificate.validTo}
+                            <strong>Cert Valid To:</strong> {isClientMounted && agent.agentCertificate.validTo ? new Date(agent.agentCertificate.validTo).toLocaleString() : agent.agentCertificate.validTo}
                           </p>
                           {agent.isRevoked && agent.revocationTimestamp && (
                             <p className="flex items-center text-destructive">
@@ -414,10 +469,10 @@ export default function ANSAgentRegistryPage() {
                                 size="sm" 
                                 variant="outline" 
                                 onClick={() => handleRenewAgent(agent.ansName)} 
-                                disabled={isLoading[agent.ansName]}
+                                disabled={!!isLoading[agent.ansName]}
                                 className="bg-green-500/10 hover:bg-green-500/20 border-green-500/50 text-green-700"
                               >
-                                {isLoading[agent.ansName] ? <Workflow className="mr-1 h-4 w-4 animate-spin"/> : <RefreshCcw className="mr-1 h-4 w-4"/>}
+                                {isLoading[agent.ansName] ? <Loader2 className="mr-1 h-4 w-4 animate-spin"/> : <RefreshCcw className="mr-1 h-4 w-4"/>}
                                 Renew
                               </Button>
                             )}
@@ -426,9 +481,9 @@ export default function ANSAgentRegistryPage() {
                                 size="sm" 
                                 variant="destructive" 
                                 onClick={() => handleRevokeAgent(agent.ansName)}
-                                disabled={isLoading[agent.ansName]}
+                                disabled={!!isLoading[agent.ansName]}
                               >
-                                {isLoading[agent.ansName] ? <Workflow className="mr-1 h-4 w-4 animate-spin"/> : <ShieldOff className="mr-1 h-4 w-4"/>}
+                                {isLoading[agent.ansName] ? <Loader2 className="mr-1 h-4 w-4 animate-spin"/> : <ShieldOff className="mr-1 h-4 w-4"/>}
                                 Revoke
                               </Button>
                             ) : (
@@ -441,7 +496,7 @@ export default function ANSAgentRegistryPage() {
                   ))}
                 </Accordion>
               ) : (
-                <p className="text-muted-foreground text-center py-8">No agents found. Try registering one!</p>
+                <p className="text-muted-foreground text-center py-8">No agents found. Try registering one or seeding sample agents!</p>
               )}
             </ScrollArea>
           </CardContent>
@@ -461,4 +516,5 @@ const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, l
     {children}
   </div>
 )
+
     
