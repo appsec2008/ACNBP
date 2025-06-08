@@ -6,13 +6,14 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { LayoutDashboard, BotMessageSquare, ListTree, ShieldCheck, BrainCircuit, ExternalLink } from "lucide-react";
+import { LayoutDashboard, BotMessageSquare, ListTree, ShieldCheck, BrainCircuit, ExternalLink, Share2 } from "lucide-react";
 
 interface Feature {
   title: string;
   description: string;
   icon: LucideIcon;
   href: string;
+  isExternal?: boolean; // Added to handle external links
 }
 
 const initialFeaturesData: Feature[] = [
@@ -40,6 +41,13 @@ const initialFeaturesData: Feature[] = [
     icon: BrainCircuit,
     href: "/offer-evaluation",
   },
+  {
+    title: "ACNBP & Google A2A Protocol",
+    description: "ACNBP enables negotiation and secure binding. Post-binding, agents can use various communication protocols like Google's A2A, if specified in their 'protocolExtension', for skill execution. Learn more about A2A on GitHub.",
+    icon: Share2,
+    href: "https://github.com/google-a2a/A2A",
+    isExternal: true,
+  },
 ];
 
 export default function DashboardPage() {
@@ -51,7 +59,7 @@ export default function DashboardPage() {
         icon={LayoutDashboard}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         {initialFeaturesData.map((feature) => (
           <Card key={feature.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
             <CardContent className="p-6 flex-grow flex flex-col">
@@ -59,11 +67,17 @@ export default function DashboardPage() {
                 <feature.icon className="h-7 w-7 text-primary mr-3" />
                 <CardTitle className="text-2xl">{feature.title}</CardTitle>
               </div>
-              <CardDescription className="mb-4 min-h-[3em] flex-grow">{feature.description}</CardDescription>
+              <CardDescription className="mb-4 min-h-[4em] flex-grow">{feature.description}</CardDescription> {/* Increased min-h for description */}
               <Button asChild variant="outline" className="mt-auto">
-                <Link href={feature.href}>
-                  Explore <ExternalLink className="ml-2 h-4 w-4" />
-                </Link>
+                {feature.isExternal ? (
+                  <a href={feature.href} target="_blank" rel="noopener noreferrer">
+                    Explore <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                ) : (
+                  <Link href={feature.href}>
+                    Explore <ExternalLink className="ml-2 h-4 w-4" />
+                  </Link>
+                )}
               </Button>
             </CardContent>
           </Card>
