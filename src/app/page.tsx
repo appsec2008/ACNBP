@@ -13,7 +13,7 @@ interface Feature {
   description: string;
   icon: LucideIcon;
   href: string;
-  isExternal?: boolean; // Added to handle external links
+  isExternal?: boolean;
 }
 
 const initialFeaturesData: Feature[] = [
@@ -67,7 +67,7 @@ export default function DashboardPage() {
                 <feature.icon className="h-7 w-7 text-primary mr-3" />
                 <CardTitle className="text-2xl">{feature.title}</CardTitle>
               </div>
-              <CardDescription className="mb-4 min-h-[4em] flex-grow">{feature.description}</CardDescription> {/* Increased min-h for description */}
+              <CardDescription className="mb-4 min-h-[4em] flex-grow">{feature.description}</CardDescription>
               <Button asChild variant="outline" className="mt-auto">
                 {feature.isExternal ? (
                   <a href={feature.href} target="_blank" rel="noopener noreferrer">
