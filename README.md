@@ -1,21 +1,19 @@
 
-# Agent Name Service (ANS) Platform
+# Agent Capability Negotiation and Binding Protocol (ACNBP) Platform
 
 **Author:** Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff
 
 ## Project Introduction
 
-The proliferation of AI agents requires robust mechanisms for secure discovery. This paper introduces the Agent Name Service (ANS), a novel architecture based on DNS addressing the lack of a public agent discovery framework. ANS provides a protocol-agnostic registry infrastructure that leverages Public Key Infrastructure (PKI) certificates for verifiable agent identity and trust. The architecture features several key innovations: a formalized agent registration and renewal mechanism for lifecycle management; DNS-inspired naming conventions with capability-aware resolution; a modular Protocol Adapter Layer supporting diverse communication standards (A2A, MCP, ACP etc.); and precisely defined algorithms for secure resolution. We implement structured communication using JSON Schema and conduct a comprehensive threat analysis of our proposal. The result is a foundational directory service addressing the core challenges of secured discovery and interaction in multi-agent systems, paving the way for future interoperable, trustworthy, and scalable agent ecosystems.
+This Next.js web application is designed to demonstrate and explore the core concepts of the **Agent Capability Negotiation and Binding Protocol (ACNBP)**. ACNBP facilitates precise and secure interactions in multi-agent systems, typically operating in conjunction with an Agent Name Service (ANS) for initial agent discovery. This platform provides an interactive way to visualize and experiment with key ACNBP phases:
 
-This project is a Next.js web application designed to demonstrate and explore the core concepts of an **Agent Name Service (ANS)**. It provides an interactive platform to visualize and experiment with key aspects of multi-agent systems, including:
+*   **Candidate Pre-Screening (CPS) Support:** The "ANS Agent Registry" and "ANS Resolution" features simulate how a Requester Agent (`a_req`) might discover and get initial details of potential Provider Agents. ACNBP's CPS phase would use such information (e.g., ANRI lists from ANS) for initial filtering.
+*   **Skill Set Request (SSR) & Offer (SSO):** The "Capability Negotiation" page demonstrates the core exchange where `a_req` defines its requirements (Negotiation Context) and sends an SSR to selected `a_prov_candidate`(s). Provider agents would then respond with a specific Skill Set Offer (SSO).
+*   **Skill Set Evaluation (SSE):** The "Offer Evaluation" page utilizes AI (Genkit & Gemini) to assess SSOs based on criteria like cost, QoS, protocol compatibility, and security requirements, assisting `a_req` in selecting the most suitable offer.
+*   **Skill Set Acceptance (SSA) & Binding Confirmation (BC):** The "Secure Binding" page simulates the final agreement stages. `a_req` sends an SSA to accept an offer, and `a_prov_bound` (the chosen provider) responds with a BC. This process involves CA-issued certificates for signing these critical messages.
+*   **Post-Binding Interaction (Conceptual):** The "Secure Binding" page also illustrates (in Step 7) how, once an ACNBP binding is established, agents can then use various communication protocols (e.g., Google's A2A, MCP) for actual skill execution. These protocols and their details would have been communicated via `protocolExtension` fields during the ACNBP negotiation.
 
-*   **Agent Registration & Lifecycle:** How agents are registered with the ANS, including certificate issuance and renewal/revocation processes.
-*   **Agent Name Service (ANS):** A system inspired by DNS for agent discovery, featuring an "ANS Agent Registry" where agents are listed with their capabilities, CA-issued certificates, and protocol details, and an "ANS Resolution" service to look up agents by their structured ANSName.
-*   **Secure Agent Identity:** Demonstrating how PKI-issued certificates bind an agent's identity (ID, Public Key, ANSName/Endpoint).
-*   **Capability-Aware Discovery (Conceptual):** While full capability-based searching isn't implemented, the ANSName structure itself embeds capability information.
-*   **AI-Powered Offer Evaluation:** Leveraging Generative AI (via Genkit and Gemini) to evaluate and score capability offers from different agents, which could be discovered via ANS.
-
-The platform aims to provide a tangible way to understand the dynamics of agent interactions within a structured ANS framework.
+The platform aims to provide a tangible way to understand the dynamics of ACNBP-brokered agent interactions and the role of supporting services like ANS.
 
 ## Important: Demo Status and Future Improvements
 
@@ -51,17 +49,17 @@ Significant work is required to address security, scalability, and robustness be
 5.  **Monitoring and Logging:**
     *   Integrate comprehensive logging and monitoring to track system health, performance, and security events.
 
-## Key Ideas (Agent Name Service - ANS)
+## Key Ideas (Agent Capability Negotiation and Binding Protocol - ACNBP)
 
-The ANS platform is built around the following key ideas from the referenced paper:
+The ACNBP platform is built around the following key ideas from the referenced paper:
 
-1.  **Universal Agent Directory:** ANS provides a protocol-agnostic registry infrastructure for secure AI agent discovery.
-2.  **PKI-Based Identity:** Leverages Public Key Infrastructure (PKI) certificates for verifiable agent identity and trust.
-3.  **Lifecycle Management:** Formalized agent registration, renewal, and revocation mechanisms.
-4.  **DNS-Inspired Naming:** Uses structured ANSNames (`Protocol://AgentID.agentCapability.Provider.vVersion.Extension`) for discovery.
-5.  **Capability-Aware Resolution (Conceptual):** The ANSName itself embeds capability, and the system allows resolution based on these structured names.
-6.  **Modular Protocol Support:** A conceptual Protocol Adapter Layer allows support for diverse communication standards (A2A, MCP, ACP, etc.), demonstrated here by storing protocol-specific data.
-7.  **Secure Resolution Algorithms:** The platform demonstrates basic secure resolution by returning CA-signed agent certificates.
+1.  **Structured Negotiation:** ACNBP defines a formal multi-step protocol (SSR, SSO, SSA, BC) for agents to negotiate capabilities, ensuring clarity and mutual understanding before binding.
+2.  **ANS-Leveraged Discovery:** ACNBP assumes Provider Agents are discoverable via an Agent Name Service (ANS). ANS provides initial metadata like ANSNames and pointers to Protocol Extensions, which are crucial for the Candidate Pre-Screening (CPS) phase of ACNBP.
+3.  **Protocol Extensions:** Agents exchange detailed, protocol-specific information (e.g., A2A AgentCards for Google's A2A protocol, MCP endpoint details, or other custom protocol data) within their `protocolExtension` fields. This enables interoperability for skill execution after a binding is confirmed.
+4.  **Negotiation Context (NC):** The Requester Agent (`a_req`) defines its precise needs—covering desired capabilities, specific skills, Quality of Service (QoS) targets, cost constraints, and security requirements—in a Negotiation Context. This NC is sent in the Skill Set Request (SSR) to guide the negotiation.
+5.  **Secure Binding with PKI:** ACNBP mandates the use of digital signatures for its messages (SSR, SSO, SSA, BC). Agents use CA-issued certificates that bind their Agent ID, Public Key, and ANS Endpoint, allowing for verifiable identities and secure communication channels during the binding process.
+6.  **AI-Assisted Evaluation:** The protocol supports intelligent evaluation of offers. This platform demonstrates this with an LLM (via Genkit and Gemini) assessing Skill Set Offers (SSOs) against `a_req`'s Negotiation Context, particularly focusing on security aspects.
+7.  **Dynamic Updates (Conceptual):** While not fully implemented in this demo, ACNBP includes provisions for Dynamic Capability Updates (DCU) to manage changes in long-lived bindings.
 
 ## Prerequisites
 
@@ -104,7 +102,7 @@ Before you begin, ensure you have the following installed:
         yarn dev
         ```
         This will typically start the Next.js development server on `http://localhost:9002`.
-        The first time you run the app, an `agent_registry.db` SQLite file will be created in the project root (or `/tmp/` in production-like Vercel builds).
+        The first time you run the app, an `agent_registry.db` SQLite file will be created in the project root (or `/tmp/` in production-like Vercel builds). This database is used by the ANS simulation parts of the platform.
 
     *   **For Genkit (AI Flows - if you want to inspect/develop flows locally):**
         In a separate terminal, you can run the Genkit development server:
@@ -133,7 +131,7 @@ Contributions are welcome! If you'd like to contribute to this project, please f
 4.  **Test Your Changes:** Ensure your changes don't break existing functionality and that new features work as expected.
 5.  **Commit Your Changes:** Write clear and concise commit messages.
     ```bash
-    git commit -m "feat: Add new ANS resolution parameter"
+    git commit -m "feat: Add new ACNBP message handling"
     ```
 6.  **Push to Your Fork:**
     ```bash
@@ -145,13 +143,14 @@ Please ensure your code is well-formatted and, if adding new features, consider 
 
 ## Referencing this Project
 
-If you use this ANS Platform in your research or work, please consider citing the associated paper:
+If you use this ACNBP Platform in your research or work, please consider citing the associated paper:
 
 Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff (2024). *Agent Name Service (ANS): A Universal Directory for Secure AI Agent Discovery and Interoperability*. arXiv preprint arXiv:2505.10609. Retrieved from https://arxiv.org/abs/2505.10609
+*(Note: ACNBP builds upon the concepts introduced in the ANS paper. A dedicated ACNBP paper may follow.)*
 
 You can also refer to this software implementation:
 
-Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff. *Agent Name Service (ANS) Platform* [Software]. Retrieved from [URL_OF_THIS_GITHUB_REPOSITORY_IF_PUBLIC]
+Huang, Ken, Vineeth Sai Narajala, Idan Habler, Akram Sheriff. *Agent Capability Negotiation and Binding Protocol (ACNBP) Platform* [Software]. Retrieved from [URL_OF_THIS_GITHUB_REPOSITORY_IF_PUBLIC]
 
 ## License
 
