@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, Lock, KeyRound, CheckCircle2, AlertTriangle, FileJson, MessageSquare, Fingerprint, Loader2, ExternalLink, Globe, UserCheck, Server } from "lucide-react";
+import { ShieldCheck, Lock, KeyRound, CheckCircle2, AlertTriangle, FileJson, MessageSquare, Fingerprint, Loader2, ExternalLink, Globe, UserCheck, Server, Puzzle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -41,12 +41,63 @@ const SERVER_AGENT_DETAILS = {
     ansEndpoint: "acnbp://SecureService.GenericEndpoint.ACNBP.v1.0.0.main"
 }
 
+// Example A2A Agent Card structure to display for step 7
+const exampleServerA2AAgentCardJson = `{
+  "a2aAgentCard": {
+    "version": "1.0.0",
+    "name": "ServerAgentB_SkillProvider",
+    "description": "This is an example A2A AgentCard for ServerAgentB, detailing its skills and endpoint.",
+    "url": "https://api.serveragentb.com/invoke",
+    "skills": [
+      {
+        "id": "processDataSecurely",
+        "name": "Process Data Securely",
+        "description": "Accepts data and processes it according to the bound agreement."
+      },
+      {
+        "id": "getSecureStatus",
+        "name": "Get Secure Processing Status",
+        "description": "Returns the status of a previously submitted secure processing job."
+      }
+    ],
+    "defaultInputModes": ["application/json"],
+    "defaultOutputModes": ["application/json"],
+    "capabilities": {
+      "streaming": false,
+      "stateTransitionHistory": true
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Requires a bearer token obtained via ACNBP-established session."
+      }
+    },
+    "security": [
+      { "bearerAuth": [] }
+    ],
+    "provider": {
+      "organization": "${SERVER_AGENT_DETAILS.name}",
+      "url": "https://serveragentb.com"
+    },
+    "defaultCost": 50, 
+    "defaultQos": 0.95
+  },
+  "cost": 50,
+  "qos": 0.95,
+  "customData": {
+    "serviceTier": "premiumBound"
+  }
+}`;
+
+
 export default function SecureBindingPage() {
   const [caPublicKey, setCaPublicKey] = useState<string | null>(null);
   const [agentA, setAgentA] = useState<AgentState>({ id: "ClientAgentPlaceholder", ansEndpoint: null, publicKey: null, certificate: null });
   const [agentB, setAgentB] = useState<AgentState>({ id: SERVER_AGENT_DETAILS.id, ansEndpoint: SERVER_AGENT_DETAILS.ansEndpoint, publicKey: null, certificate: null });
   const [messageToSign, setMessageToSign] = useState<string>("Hello Secure Service, I'd like to bind (ACNBP SSS).");
   const [signedMessage, setSignedMessage] = useState<{ message: string; signature: string; certificate: any } | null>(null);
+  const [agentBVerificationStatus, setAgentBVerificationStatus] = useState<'success' | 'failed' | null>(null);
   
   const [bindingLog, setBindingLog] = useState<BindingLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({});
@@ -95,6 +146,7 @@ export default function SecureBindingPage() {
     } catch (error: any) {
       logEntry(stepName, `${errorMessage}: ${error.message}`, 'error', AlertTriangle, { error: error.message });
       toast({ title: 'Error', description: `${errorMessage}: ${error.message}`, variant: 'destructive', duration: 10000 });
+      setAgentBVerificationStatus('failed'); // Also set verification status to failed on API error during verification
       return null;
     } finally {
       setIsLoading(prev => ({ ...prev, [loadingKey]: false }));
@@ -109,6 +161,7 @@ export default function SecureBindingPage() {
       certificate: null,
     });
     setNegotiatedAgentLoaded(true);
+    setAgentBVerificationStatus(null); // Reset verification status
     logEntry(
       "1. Load Client Agent (Post-ACNBP Selection)", 
       `Simulated loading of Client Agent '${SIMULATED_NEGOTIATED_AGENT.name}' (ID: ${SIMULATED_NEGOTIATED_AGENT.id}, ANS Endpoint: ${SIMULATED_NEGOTIATED_AGENT.ansEndpoint}). This agent has completed ACNBP negotiation and is ready for binding.`, 
@@ -120,6 +173,7 @@ export default function SecureBindingPage() {
   };
 
   const setupCA = async () => {
+    setAgentBVerificationStatus(null); // Reset verification status
     await handleApiCall('/api/secure-binding/ca', 'POST', null, '2. Setup CA', 'caSetupPost', 'CA existence ensured.', 'Failed to setup CA');
     const data = await handleApiCall('/api/secure-binding/ca', 'GET', null, '2. Get CA Public Key', 'caSetupGet', 'CA Public Key retrieved.', 'Failed to retrieve CA Public Key');
     if (data?.caPublicKey) {
@@ -133,6 +187,7 @@ export default function SecureBindingPage() {
     agentDisplayName: string, 
     stepPrefix: string 
   ) => {
+    setAgentBVerificationStatus(null); // Reset verification status if re-initializing agents
     if (!agentState.id || !agentState.ansEndpoint) {
         logEntry(`Initialize ${agentDisplayName}`, `${agentDisplayName} ID or ANS Endpoint not set. Load agent first.`, 'error', AlertTriangle);
         toast({ title: "Initialization Error", description: `Details for ${agentDisplayName} are missing.`, variant: 'destructive'});
@@ -169,6 +224,7 @@ export default function SecureBindingPage() {
   };
 
   const agentASignMessage = async () => {
+    setAgentBVerificationStatus(null); // Reset verification status
     if (!agentA.certificate || !messageToSign || !agentA.id) {
       toast({ title: "Missing Info", description: "Client Agent (Agent A) must be initialized (keys & cert) and message must be provided.", variant: "destructive" });
       logEntry("5. Sign Message (ACNBP SSS)", "Client Agent (Agent A) not fully initialized or message empty.", 'error', AlertTriangle);
@@ -189,14 +245,17 @@ export default function SecureBindingPage() {
   };
   
   const agentBVerifyMessage = async () => {
+    setAgentBVerificationStatus(null); 
     if (!signedMessage) {
       toast({ title: "Missing Info", description: "No signed message available to verify.", variant: "destructive" });
       logEntry("6. Verify Message (ACNBP SSS & Client Cert)", "No signed message from Client Agent.", 'error', AlertTriangle);
+      setAgentBVerificationStatus('failed');
       return;
     }
     if (!caPublicKey) {
         toast({ title: "Missing CA Key", description: "CA Public Key not available for certificate verification.", variant: "destructive" });
         logEntry("6. Verify Message", "CA Public Key missing.", 'error', AlertTriangle);
+        setAgentBVerificationStatus('failed');
         return;
     }
 
@@ -216,16 +275,69 @@ export default function SecureBindingPage() {
 
     if (verificationResult?.overallStatus === 'success') {
         toast({ title: 'Verification Successful', description: verificationResult.details || `Message and certificate verified. ACNBP Binding Confirmation would follow.`});
-    } else if (verificationResult) { 
-        toast({ title: 'Verification Failed', description: verificationResult.details || 'Check log for details.', variant: 'destructive'});
+        setAgentBVerificationStatus('success');
+    } else { 
+        toast({ title: 'Verification Failed', description: verificationResult?.details || 'Check log for details.', variant: 'destructive'});
+        setAgentBVerificationStatus('failed');
     }
   };
+
+  const handleA2ASkillInvocationSetup = () => {
+    setIsLoading(prev => ({ ...prev, a2aSetup: true }));
+    const stepName = "7. Post-Binding: A2A Skill Invocation Setup";
+    logEntry(stepName, "Initiating A2A skill invocation setup simulation...", 'info', Puzzle);
+
+    logEntry(
+      stepName,
+      `ACNBP Binding Confirmed (BC received by Client Agent '${agentA.id}' from Server Agent '${agentB.id}').`,
+      'success',
+      CheckCircle2
+    );
+    logEntry(
+      stepName,
+      `Client Agent '${agentA.id}' now needs to invoke a skill on Server Agent '${agentB.id}'.`,
+      'info'
+    );
+    logEntry(
+      stepName,
+      `Client Agent '${agentA.id}' has Server Agent '${agentB.id}'s certificate. This certificate contains Server Agent B's ANSName: '${agentB.ansEndpoint || "N/A (Server Cert Missing ANS Endpoint)"}'.`,
+      'info',
+      null,
+      { serverAgentBCertificateSummary: agentB.certificate ? { subject: agentB.certificate.subjectAgentId, ansEndpoint: agentB.certificate.subjectAnsEndpoint, issuer: agentB.certificate.issuer } : "Server Agent B certificate not fully initialized for this step's full context." }
+    );
+    logEntry(
+      stepName,
+      `Client Agent '${agentA.id}' would resolve Server Agent '${agentB.id}'s ANSName ('${agentB.ansEndpoint || "N/A"}') via the Agent Name Service (ANS) to retrieve its full Protocol Extension.`,
+      'info'
+    );
+    logEntry(
+      stepName,
+      `If Server Agent '${agentB.id}' is an A2A agent, its Protocol Extension would contain its A2A AgentCard. Below is an example of what Server Agent B's A2A AgentCard MIGHT look like:`,
+      'data',
+      FileJson,
+      JSON.parse(exampleServerA2AAgentCardJson) // Parse to ensure it's an object for better display
+    );
+    logEntry(
+      stepName,
+      `Client Agent '${agentA.id}' parses this A2A AgentCard to find the 'url' for invoking skills and the specific 'skill.id' (e.g., 'processDataSecurely') of the desired skill offered by Server Agent '${agentB.id}'.`,
+      'info'
+    );
+     logEntry(
+      stepName,
+      "Actual A2A skill invocation (e.g., sending a request to the card's 'url' with skill-specific payload) would then proceed. This concludes the ACNBP binding setup for A2A interaction.",
+      'success',
+      CheckCircle2
+    );
+    toast({title: "A2A Setup Simulated", description: "Post-binding A2A interaction flow illustrated in logs."});
+    setIsLoading(prev => ({ ...prev, a2aSetup: false }));
+  };
+
 
   return (
     <>
       <PageHeader
         title="ACNBP: Secure Agent Binding"
-        description="Simulate the secure binding phase of ACNBP. A client agent (post-negotiation) and a server agent use CA-issued certificates (binding Agent ID, Public Key, & ANS Endpoint) for mutual authentication. The client signs a message (e.g., Skill Set Acceptance - SSS), and the server verifies it before confirming the binding (BC)."
+        description="Simulate the secure binding phase of ACNBP. A client agent (post-negotiation) and a server agent use CA-issued certificates (binding Agent ID, Public Key, & ANS Endpoint) for mutual authentication. The client signs a message (e.g., Skill Set Acceptance - SSS), and the server verifies it before confirming the binding (BC). Step 7 illustrates post-binding A2A setup."
         icon={ShieldCheck}
       />
 
@@ -274,42 +386,46 @@ export default function SecureBindingPage() {
                 {isLoading['verifyMsg'] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
                 6. Server Verifies SSS & Client Cert
             </Button>
+            <Button onClick={handleA2ASkillInvocationSetup} disabled={agentBVerificationStatus !== 'success' || isLoading['a2aSetup']} className="w-full justify-start">
+                {isLoading['a2aSetup'] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Puzzle className="mr-2 h-4 w-4" />}
+                7. Post-Binding: A2A Skill Invocation Setup
+            </Button>
           </CardContent>
            <CardFooter>
-            <p className="text-xs text-muted-foreground">Follow log for details. Keys & certs are in-memory on server.</p>
+            <p className="text-xs text-muted-foreground">Follow log for details. Keys & certs are in-memory on server for this simulation.</p>
           </CardFooter>
         </Card>
 
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader>
             <CardTitle>ACNBP Binding Log & Artifacts</CardTitle>
-            <CardDescription>Tracks steps & shows crypto data (Public Keys, Signed Certs for ACNBP message signing).</CardDescription>
+            <CardDescription>Tracks steps & shows crypto data (Public Keys, Signed Certs for ACNBP message signing). Step 7 shows an example A2A AgentCard.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[600px] bg-muted/30 rounded-md p-1">
+            <ScrollArea className="h-[calc(100vh-280px)] min-h-[500px] bg-muted/30 rounded-md p-1"> {/* Adjusted height */}
               <div className="p-3 space-y-3">
                 {bindingLog.length === 0 && (
                   <p className="text-muted-foreground italic text-center pt-16">Execute protocol steps to see log here...</p>
                 )}
                 {bindingLog.map((entry, index) => (
                   <div key={index} className={`text-sm p-2.5 rounded-md shadow-sm border-l-4 ${
-                    entry.type === 'success' ? 'border-green-500 bg-green-500/10 text-green-700' :
-                    entry.type === 'error' ? 'border-red-500 bg-red-500/10 text-red-700' :
-                    entry.type === 'data' ? 'border-blue-500 bg-blue-500/10 text-blue-700' :
-                    'border-gray-400 bg-gray-500/10 text-gray-700'
+                    entry.type === 'success' ? 'border-green-500 bg-green-500/10 text-green-700 dark:text-green-300 dark:bg-green-700/20' :
+                    entry.type === 'error' ? 'border-red-500 bg-red-500/10 text-red-700 dark:text-red-300 dark:bg-red-700/20' :
+                    entry.type === 'data' ? 'border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 dark:bg-blue-700/20' :
+                    'border-gray-400 bg-gray-500/10 text-gray-700 dark:text-gray-300 dark:bg-gray-700/20'
                   }`}>
                     <div className="flex items-center mb-1">
                       {entry.icon && <entry.icon className={`h-5 w-5 mr-2 flex-shrink-0 ${
-                        entry.type === 'success' ? 'text-green-600' :
-                        entry.type === 'error' ? 'text-red-600' :
-                        entry.type === 'data' ? 'text-blue-600' : 'text-gray-600'}`} />}
+                        entry.type === 'success' ? 'text-green-600 dark:text-green-400' :
+                        entry.type === 'error' ? 'text-red-600 dark:text-red-400' :
+                        entry.type === 'data' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`} />}
                       <span className="font-semibold">{entry.step}</span>
                       <span className="font-mono text-xs ml-auto text-muted-foreground">{entry.timestamp}</span>
                     </div>
                     <p className="ml-1 break-words">{entry.message}</p>
                     {entry.data && (
                       <details className="mt-2 text-xs cursor-pointer">
-                        <summary className="font-medium hover:underline">View Data/Details (Certificate, Keys, etc.)</summary>
+                        <summary className="font-medium hover:underline">View Data/Details (Certificate, Keys, AgentCard Example, etc.)</summary>
                         <pre className="mt-1 p-2 bg-background/50 rounded whitespace-pre-wrap break-all overflow-x-auto max-h-60">
                           {JSON.stringify(entry.data, null, 2)}
                         </pre>
@@ -325,3 +441,4 @@ export default function SecureBindingPage() {
     </>
   );
 }
+
