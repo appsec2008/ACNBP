@@ -1,0 +1,79 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NegotiationContext (NC)",
+  "description": "Schema for the Negotiation Context, defined by the Requester Agent (a_req) to guide candidate selection and negotiation in ACNBP. It's a set of parameters and constraints.",
+  "type": "object",
+  "properties": {
+    "desiredCapabilityId": {
+      "type": "string",
+      "description": "The primary capability a_req is seeking (e.g., 'DocumentTranslation')."
+    },
+    "requiredSkills": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "skillIdPattern": {"type": "string", "description": "ID or pattern for a required skill."},
+                "isMandatory": {"type": "boolean", "default": true},
+                "parametersConstraints": {"type": "object", "description": "Constraints on skill parameters."}
+            },
+            "required": ["skillIdPattern"]
+        },
+        "description": "Specific skills or types of skills a_req requires."
+    },
+    "qualityOfServiceRequirements": {
+        "$ref": "acnbp-common.definitions.schema.json#/definitions/QoS",
+        "description": "Minimum acceptable QoS levels."
+    },
+    "costConstraints": {
+        "$ref": "acnbp-common.definitions.schema.json#/definitions/Costs",
+        "description": "Maximum acceptable costs or preferred pricing models."
+    },
+    "securityRequirements": {
+      "type": "object",
+      "properties": {
+          "requiredCompliance": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "List of mandatory compliance standards (e.g., ['HIPAA', 'GDPR'])."
+          },
+          "requiredSecurityFeatures": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "List of mandatory security features (e.g., ['End-to-End Encryption'])."
+          },
+          "trustPolicyUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL to a_req's detailed trust policy."
+          }
+      }
+    },
+    "contextualParameters": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Other capability-specific or task-specific parameters (e.g., 'target_language': 'Japanese', 'document_sensitivity': 'High_Legal_Confidential' for DocumentTranslation)."
+    },
+    "preferredProtocols": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "protocolName": {"type": "string"},
+                "version": {"type": "string"}
+            },
+            "required": ["protocolName"]
+        },
+        "description": "List of communication protocols preferred or supported by a_req."
+    },
+    "executionDeadline": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Optional: Deadline for the completion of the task."
+    }
+  },
+  "required": [
+    "desiredCapabilityId"
+  ]
+}

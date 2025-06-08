@@ -1,0 +1,44 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentNameResolutionItem (ANRI)",
+  "description": "Schema for an Agent Name Resolution Item, as returned by ANS in list mode for ACNBP. Contains the agent's ANS name and pointers to essential metadata.",
+  "type": "object",
+  "properties": {
+    "ansName": {
+      "type": "string",
+      "format": "uri",
+      "description": "The full ANS name (URL) of the discovered agent (e.g., 'ans://TranslatorA_Corp.trustedcorp.com/dt')."
+    },
+    "protocolExtensionSummaryUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL pointing to a summary of the agent's protocolExtension. This summary is used for initial filtering in CPS."
+    },
+    "fullProtocolExtensionUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL pointing to the agent's complete protocolExtension document for detailed fetching."
+    },
+    "certificateReferenceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL pointing to the agent's digital certificate or information about its PKI."
+    },
+    "lastModified": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Optional: Timestamp indicating when this ANRI or its referenced metadata was last updated in ANS."
+    },
+    "ansRecordSignature": {
+        "type": "string",
+        "description": "Optional: A digital signature from ANS over the ANRI content to ensure its integrity from the source."
+    }
+  },
+  "required": [
+    "ansName",
+    "protocolExtensionSummaryUrl",
+    "fullProtocolExtensionUrl",
+    "certificateReferenceUrl"
+  ]
+}

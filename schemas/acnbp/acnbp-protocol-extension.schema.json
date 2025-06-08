@@ -1,0 +1,126 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProtocolExtension (PE)",
+  "description": "Conceptual schema for a ProtocolExtension document as used in ACNBP. Contains protocol-specific information, detailed capability descriptions, skills, costs, QoS parameters, security attestations, etc. This is a generic template; specific protocols (A2A, MCP, ACP) would have their own detailed PE schemas.",
+  "type": "object",
+  "properties": {
+    "protocolName": {
+      "type": "string",
+      "description": "Name of the specific communication protocol this PE adheres to (e.g., 'A2A', 'MCP', 'ACP')."
+    },
+    "protocolVersion": {
+      "type": "string",
+      "description": "Version of the communication protocol."
+    },
+    "agentId": {
+        "type": "string",
+        "description": "The unique identifier of the agent this PE belongs to."
+    },
+    "ansName": {
+        "type": "string",
+        "format": "uri",
+        "description": "The ANS Name of the agent."
+    },
+    "offeredCapabilities": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "capabilityId": {
+                    "type": "string",
+                    "description": "A unique identifier for the capability (e.g., 'DocumentTranslation', 'RiskAssessment')."
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Human-readable description of the capability."
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "acnbp-common.definitions.schema.json#/definitions/Skill"
+                    },
+                    "description": "Detailed list of specific skills offered under this capability."
+                },
+                "defaultCosts": {
+                    "$ref": "acnbp-common.definitions.schema.json#/definitions/Costs",
+                    "description": "Default cost structure for this capability."
+                },
+                "defaultQoS": {
+                    "$ref": "acnbp-common.definitions.schema.json#/definitions/QoS",
+                    "description": "Default Quality of Service parameters for this capability."
+                }
+            },
+            "required": ["capabilityId", "description", "skills"]
+        }
+    },
+    "communicationEndpoints": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "protocol": {"type": "string", "description": "e.g., HTTPS, gRPC, A2A-specific"},
+                "url": {"type": "string", "format": "uri"},
+                "authenticationMethod": {"type": "string"}
+            },
+            "required": ["protocol", "url"]
+        }
+    },
+    "securityProfile": {
+      "type": "object",
+      "properties": {
+        "complianceAttestations": {
+          "type": "array",
+          "items": {
+            "$ref": "acnbp-common.definitions.schema.json#/definitions/ComplianceAttestation"
+          },
+          "description": "List of compliance attestations (e.g., HIPAA, GDPR, ISO27001)."
+        },
+        "securityFeatures": {
+            "type": "array",
+            "items": {
+                "$ref": "acnbp-common.definitions.schema.json#/definitions/SecurityFeature"
+            },
+            "description": "Specific security features implemented by the agent."
+        },
+        "dataHandlingPoliciesUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to detailed data handling and privacy policies."
+        }
+      }
+    },
+    "supportedMessageFormats": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "E.g., ['application/json', 'application/xml', 'application/protobuf']"
+    },
+    "termsOfServiceUrl": {
+        "type": "string",
+        "format": "uri",
+        "description": "URL to the agent's terms of service."
+    },
+    "customFields": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Protocol-specific or vendor-specific extension fields."
+    },
+    "lastUpdated": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Timestamp of when this ProtocolExtension was last updated."
+    },
+    "signature": {
+        "type": "string",
+        "description": "Optional: A digital signature from the agent/provider over this PE document to ensure its integrity."
+    }
+  },
+  "required": [
+    "protocolName",
+    "protocolVersion",
+    "agentId",
+    "ansName",
+    "offeredCapabilities",
+    "communicationEndpoints"
+  ]
+}

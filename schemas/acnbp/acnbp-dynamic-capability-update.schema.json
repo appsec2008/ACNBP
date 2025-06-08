@@ -1,0 +1,67 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DynamicCapabilityUpdatePayload (DCU_Payload)",
+  "description": "Schema for the payload of a Dynamic Capability Update (DCU) message in ACNBP. Sent by a_prov_bound to a_req for long-lived bindings if capabilities or terms change. This payload is digitally signed.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this DCU message."
+    },
+    "bindingId": {
+      "type": "string",
+      "description": "The ID of the existing binding this update pertains to."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of when the DCU was created."
+    },
+    "providerAgentId": {
+      "type": "string",
+      "description": "The ANS name or unique ID of the Provider Agent sending the update."
+    },
+    "capabilityUpdates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "skillId": {"type": "string", "description": "ID of the skill being updated."},
+          "updateType": {"type": "string", "enum": ["modified", "removed", "added", "deprecated"]},
+          "newSkillDefinition": {"$ref": "acnbp-common.definitions.schema.json#/definitions/Skill"},
+          "reason": {"type": "string"}
+        },
+        "required": ["skillId", "updateType"]
+      },
+      "description": "Details of the skills being updated."
+    },
+    "newTerms": {
+      "type": "object",
+      "properties": {
+        "newCosts": {"$ref": "acnbp-common.definitions.schema.json#/definitions/Costs"},
+        "newQoS": {"$ref": "acnbp-common.definitions.schema.json#/definitions/QoS"},
+        "newProtocolExtensionSnapshot": {"$ref": "acnbp-protocol-extension.schema.json"}
+      },
+      "description": "Updated terms (costs, QoS, PE) for the binding. Only include changed sections."
+    },
+    "updateEffectiveFrom": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Timestamp from which this update becomes effective."
+    },
+    "requesterAcknowledgementRequired": {
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates if the requester needs to send an acknowledgement or re-acceptance."
+    }
+  },
+  "required": [
+    "messageId",
+    "bindingId",
+    "timestamp",
+    "providerAgentId",
+    "updateEffectiveFrom"
+  ]
+}

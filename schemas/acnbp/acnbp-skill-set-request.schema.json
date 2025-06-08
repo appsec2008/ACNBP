@@ -1,0 +1,54 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SkillSetRequestPayload (SSR_Payload)",
+  "description": "Schema for the payload of a Skill Set Request (SSR) message in ACNBP. Sent by a_req to a_prov_candidate. This payload is digitally signed.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this SSR message."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of when the SSR was created."
+    },
+    "requesterAgentId": {
+      "type": "string",
+      "description": "The ANS name or unique ID of the Requester Agent (a_req)."
+    },
+    "candidateProviderAgentAnsName": {
+        "type": "string",
+        "format": "uri",
+        "description": "The ANS Name of the Candidate Provider Agent (a_prov_candidate) this request is for."
+    },
+    "targetCapabilityId": {
+      "type": "string",
+      "description": "The high-level capability being requested (e.g., 'DocumentTranslation')."
+    },
+    "negotiationContext": {
+      "$ref": "acnbp-negotiation-context.schema.json",
+      "description": "The requester's full negotiation context (NC)."
+    },
+    "requesterProtocolExtension": {
+      "$ref": "acnbp-protocol-extension.schema.json",
+      "description": "The requester's complete ProtocolExtension (pe_req), detailing its own capabilities, supported protocols, security profile, etc."
+    },
+    "responseDeadline": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Optional: Requested deadline for the provider to respond with an SSO."
+    }
+  },
+  "required": [
+    "messageId",
+    "timestamp",
+    "requesterAgentId",
+    "candidateProviderAgentAnsName",
+    "targetCapabilityId",
+    "negotiationContext",
+    "requesterProtocolExtension"
+  ]
+}

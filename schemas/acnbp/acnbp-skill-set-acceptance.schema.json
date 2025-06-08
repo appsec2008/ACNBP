@@ -1,0 +1,58 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SkillSetAcceptancePayload (SSA_Payload)",
+  "description": "Schema for the payload of a Skill Set Acceptance (SSA) message in ACNBP (referred to as SSS in paper's diagram). Sent by a_req to a_prov_candidate to accept an offer. This payload is digitally signed.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this SSA message."
+    },
+    "inReplyToMessageId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The ID of the SSO message this acceptance is for."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of when the SSA was created."
+    },
+    "requesterAgentId": {
+      "type": "string",
+      "description": "The ANS name or unique ID of the Requester Agent (a_req)."
+    },
+    "acceptedCapabilityId": {
+      "type": "string",
+      "description": "The capability ID from the accepted SSO."
+    },
+    "acceptedSkillSet": {
+      "$ref": "acnbp-common.definitions.schema.json#/definitions/SkillSet",
+      "description": "The specific skill set accepted by a_req, as detailed in the SSO."
+    },
+    "confirmedNegotiationContext": {
+      "$ref": "acnbp-negotiation-context.schema.json",
+      "description": "The requester's negotiation context, confirming the basis of acceptance."
+    },
+    "confirmedRequesterProtocolExtension": {
+      "$ref": "acnbp-protocol-extension.schema.json",
+      "description": "The requester's ProtocolExtension, as presented in the SSR, for final confirmation."
+    },
+    "acceptanceDetails": {
+        "type": "string",
+        "description": "Optional: Any additional details or confirmations from the requester."
+    }
+  },
+  "required": [
+    "messageId",
+    "inReplyToMessageId",
+    "timestamp",
+    "requesterAgentId",
+    "acceptedCapabilityId",
+    "acceptedSkillSet",
+    "confirmedNegotiationContext",
+    "confirmedRequesterProtocolExtension"
+  ]
+}

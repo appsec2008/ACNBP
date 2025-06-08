@@ -1,0 +1,226 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ACNBP Common Definitions",
+  "description": "Common data structures referenced by ACNBP message schemas.",
+  "definitions": {
+    "Skill": {
+      "title": "Skill",
+      "description": "A basic, atomic unit of workload or functionality that realizes a part of a capability, as defined in ACNBP.",
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "string",
+          "description": "A unique identifier for the skill within the provider's context (e.g., 'translate_paragraph_EN_to_JP', 'validate_HIPAA_compliance_for_data_X')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A human-readable description of the skill."
+        },
+        "version": {
+          "type": "string",
+          "description": "Optional: Version of the skill."
+        },
+        "parametersSchema": {
+          "type": "object",
+          "description": "Optional: A JSON schema describing the input parameters required by this skill."
+        },
+        "outputSchema": {
+          "type": "object",
+          "description": "Optional: A JSON schema describing the output produced by this skill."
+        },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional: List of other skill IDs this skill depends on."
+        },
+        "metrics": {
+            "type": "object",
+            "description": "Optional: Performance metrics or typical characteristics of this skill (e.g., average processing time, accuracy).",
+            "additionalProperties": true
+        }
+      },
+      "required": ["skillId", "description"]
+    },
+    "SkillSet": {
+        "title": "SkillSet",
+        "description": "A collection of specific skills required to perform a task under a given capability.",
+        "type": "array",
+        "items": {
+            "$ref": "#/definitions/Skill"
+        }
+    },
+    "Costs": {
+      "title": "Costs",
+      "description": "Defines the cost structure for the offered skills or capability.",
+      "type": "object",
+      "properties": {
+        "currency": {
+          "type": "string",
+          "description": "The currency code (e.g., USD, EUR) as per ISO 4217."
+        },
+        "pricingModel": {
+            "type": "string",
+            "enum": ["fixed", "perUnit", "tiered", "subscription", "custom"],
+            "description": "The overall pricing model."
+        },
+        "perUnitCost": {
+          "type": "number",
+          "description": "Cost per defined unit (e.g., per page, per API call, per hour)."
+        },
+        "unitDescription": {
+          "type": "string",
+          "description": "Description of the unit for perUnitCost (e.g., 'page', 'API call', 'hour', 'token')."
+        },
+        "fixedCost": {
+          "type": "number",
+          "description": "A fixed cost for the service, regardless of usage."
+        },
+        "tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string", "description": "Name of the tier."},
+              "upToQuantity": {"type": "number", "description": "Upper limit of quantity for this tier. Can be null for the last tier."},
+              "pricePerUnit": {"type": "number", "description": "Price per unit within this tier."},
+              "fixedPrice": {"type": "number", "description": "Fixed price for this tier."}
+            },
+            "required": ["name"]
+          },
+          "description": "Tiered pricing structure."
+        },
+        "discounts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "percentage": {"type": "number", "minimum": 0, "maximum": 100},
+                    "amount": {"type": "number"}
+                },
+                "required": ["description"]
+            },
+            "description": "Applicable discounts."
+        },
+        "additionalDetails": {
+          "type": "string",
+          "description": "Any other relevant cost information or URL to detailed pricing."
+        }
+      },
+      "required": ["currency", "pricingModel"]
+    },
+    "QoS": {
+      "title": "QualityOfService",
+      "description": "Defines the Quality of Service parameters.",
+      "type": "object",
+      "properties": {
+        "latency": {
+          "type": "object",
+          "properties": {
+            "average": {"type": "number"},
+            "p95": {"type": "number"},
+            "p99": {"type": "number"},
+            "unit": {"type": "string", "enum": ["ms", "s"], "default": "ms"}
+          },
+          "required": ["unit"],
+          "description": "Typical or guaranteed latency metrics."
+        },
+        "uptimePercentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Guaranteed or typical uptime percentage (e.g., 99.9)."
+        },
+        "throughput": {
+          "type": "object",
+          "properties": {
+            "value": {"type": "number"},
+            "unit": {"type": "string", "description": "e.g., requests/sec, operations/min, MB/s"}
+          },
+          "required": ["value", "unit"],
+          "description": "Rate of processing or data transfer."
+        },
+        "turnaroundTime": {
+           "type": "object",
+           "properties": {
+              "value": {"type": "number"},
+              "unit": {"type": "string", "enum": ["seconds", "minutes", "hours", "days"]}
+           },
+           "required": ["value", "unit"],
+           "description": "Guaranteed or typical turnaround time for a defined task."
+        },
+        "errorRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Typical or maximum error rate as a percentage."
+        },
+        "scalability": {
+            "type": "string",
+            "description": "Description of scalability characteristics (e.g., 'auto-scales up to X concurrent requests')."
+        },
+        "customParameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Provider-specific or capability-specific QoS parameters."
+        }
+      }
+    },
+    "ComplianceAttestation": {
+        "title": "ComplianceAttestation",
+        "description": "An attestation of compliance with a specific standard or regulation.",
+        "type": "object",
+        "properties": {
+            "standard": {
+                "type": "string",
+                "description": "The compliance standard (e.g., 'HIPAA', 'GDPR', 'ISO 27001', 'SOC 2 Type II')."
+            },
+            "attestationDate": {
+                "type": "string",
+                "format": "date",
+                "description": "Date of the attestation or certification."
+            },
+            "expiryDate": {
+                "type": "string",
+                "format": "date",
+                "description": "Optional: Expiry date of the attestation."
+            },
+            "attestationDocumentUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "Optional: URL to the certificate or attestation document."
+            },
+            "attestingBody": {
+                "type": "string",
+                "description": "Optional: The organization that provided the attestation."
+            },
+            "scope": {
+                "type": "string",
+                "description": "Optional: Scope of the attestation."
+            }
+        },
+        "required": ["standard", "attestationDate"]
+    },
+    "SecurityFeature": {
+        "title": "SecurityFeature",
+        "description": "A specific security feature offered by the agent or its service.",
+        "type": "object",
+        "properties": {
+            "featureName": {
+                "type": "string",
+                "description": "Name of the security feature (e.g., 'End-to-End Encryption', 'Data-at-Rest Encryption', 'MFA Support')."
+            },
+            "description": {
+                "type": "string",
+                "description": "Details about the feature."
+            },
+            "algorithm": {
+                "type": "string",
+                "description": "Optional: Specific algorithm used if applicable (e.g., 'AES-256', 'RSA-4096')."
+            }
+        },
+        "required": ["featureName", "description"]
+    }
+  }
+}

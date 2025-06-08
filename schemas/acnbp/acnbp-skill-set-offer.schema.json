@@ -1,0 +1,71 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SkillSetOfferPayload (SSO_Payload)",
+  "description": "Schema for the payload of a Skill Set Offer (SSO) message in ACNBP. Sent by a_prov_candidate to a_req. This payload is digitally signed.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this SSO message."
+    },
+    "inReplyToMessageId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The ID of the SSR message this offer is responding to."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of when the SSO was created."
+    },
+    "providerAgentId": {
+      "type": "string",
+      "description": "The ANS name or unique ID of the Provider Agent (a_prov_candidate)."
+    },
+    "offerStatus": {
+        "type": "string",
+        "enum": ["success", "failure", "partial_match", "clarification_needed"],
+        "description": "Status of the offer: 'success' if meets request, 'failure' if cannot meet, 'partial_match' if some discrepancies, 'clarification_needed' if more info required from requester."
+    },
+    "statusMessage": {
+        "type": "string",
+        "description": "Optional human-readable message related to the offerStatus, especially for failure or partial_match."
+    },
+    "offeredCapabilityId": {
+      "type": "string",
+      "description": "The capability being offered, should match targetCapabilityId from SSR."
+    },
+    "offeredSkillSet": {
+      "$ref": "acnbp-common.definitions.schema.json#/definitions/SkillSet",
+      "description": "The specific skill set the provider can offer for the capability. May be empty if offerStatus is 'failure'."
+    },
+    "offeredCosts": {
+      "$ref": "acnbp-common.definitions.schema.json#/definitions/Costs",
+      "description": "The detailed cost structure for the offered skill set. May be absent if offerStatus is 'failure'."
+    },
+    "offeredQoS": {
+      "$ref": "acnbp-common.definitions.schema.json#/definitions/QoS",
+      "description": "The achievable Quality of Service for the offered skill set. May be absent if offerStatus is 'failure'."
+    },
+    "providerProtocolExtension": {
+      "$ref": "acnbp-protocol-extension.schema.json",
+      "description": "The provider's complete ProtocolExtension (pe_prov)."
+    },
+    "validUntil": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Optional: Timestamp indicating how long this offer is valid."
+    }
+  },
+  "required": [
+    "messageId",
+    "inReplyToMessageId",
+    "timestamp",
+    "providerAgentId",
+    "offerStatus",
+    "offeredCapabilityId",
+    "providerProtocolExtension"
+  ]
+}
