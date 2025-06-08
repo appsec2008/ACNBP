@@ -26,6 +26,7 @@ export default function ANSAgentRegistryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({ form: false, list: true });
+  const [isClientMounted, setIsClientMounted] = useState(false);
 
   // Form state
   const [protocol, setProtocol] = useState<ANSProtocol | "">("a2a");
@@ -35,6 +36,10 @@ export default function ANSAgentRegistryPage() {
   const [version, setVersion] = useState("");
   const [extension, setExtension] = useState("");
   const [protocolExtensions, setProtocolExtensions] = useState("");
+
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
 
   const fetchAgents = async () => {
     setIsLoading(prev => ({...prev, list: true}));
@@ -58,10 +63,10 @@ export default function ANSAgentRegistryPage() {
     if (currentProtocol === "a2a") {
       return JSON.stringify({
         "a2aAgentCard": {
-          "version": "1.0.0", // A2A AgentCard schema version
+          "version": "1.0.0",
           "name": currentAgentId || "MyA2AAgent",
-          "description": `An A2A agent for ${currentAgentCapability || 'general tasks'}.`,
-          "url": "https://example-a2a-agent.com/invoke", // This is the actual A2A endpoint
+          "description": `An A2A agent for ${currentAgentCapability || 'general tasks'}. Hosted by ${provider || 'DemoProvider'}.`,
+          "url": "https://example-a2a-agent.com/invoke",
           "skills": [
             {
               "id": currentAgentCapability || "performTask",
@@ -147,7 +152,7 @@ export default function ANSAgentRegistryPage() {
             typeof parsedProtocolExtensions.a2aAgentCard.url === 'string') {
           hasEndpoint = true;
         }
-      } else { // For 'mcp', 'acp', 'other'
+      } else { 
         if (parsedProtocolExtensions.endpoint && typeof parsedProtocolExtensions.endpoint === 'string') {
           hasEndpoint = true;
         }
@@ -184,18 +189,18 @@ export default function ANSAgentRegistryPage() {
       if (!response.ok) {
         let errorMessage = responseData.error || "Failed to register agent.";
         if (responseData.details) {
-            try {
-                const fieldErrors = responseData.details._errors ? [] : Object.values(responseData.details).flatMap((field: any) => field._errors);
-                if (fieldErrors.length > 0) {
-                    errorMessage = `${errorMessage} Details: ${fieldErrors.join('; ')}`;
-                } else if (responseData.details._errors && responseData.details._errors.length > 0) {
-                    errorMessage = `${errorMessage} Details: ${responseData.details._errors.join('; ')}`;
-                } else {
-                     errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
-                }
-            } catch (e) {
-                errorMessage = `${errorMessage} Details: ${String(responseData.details)}`;
+          if (responseData.details._errors) { // Top-level errors
+            errorMessage = `${errorMessage} Details: ${responseData.details._errors.join('; ')}`;
+          } else { // Field-specific errors
+            const fieldErrors = Object.entries(responseData.details)
+              .filter(([key, value]: [string, any]) => value && Array.isArray(value._errors) && value._errors.length > 0)
+              .map(([key, value]: [string, any]) => `${key}: ${value._errors.join(', ')}`);
+            if (fieldErrors.length > 0) {
+              errorMessage = `${errorMessage} Details: ${fieldErrors.join('; ')}`;
+            } else {
+               errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
             }
+          }
         }
         throw new Error(errorMessage);
       }
@@ -317,7 +322,7 @@ export default function ANSAgentRegistryPage() {
                   rows={10}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Must be valid JSON. Include {protocol === "a2a" ? "an 'a2aAgentCard.url' string (e.g., within a2aAgentCard object)" : "an 'endpoint' key (e.g. endpoint: 'https://...')"}.
+                  Must be valid JSON. For A2A, include an 'a2aAgentCard.url' string. For others, include an 'endpoint' string.
                 </p>
               </FormItem>
             </CardContent>
@@ -371,20 +376,20 @@ export default function ANSAgentRegistryPage() {
                           {agent.extension && <p><strong>Extension:</strong> {agent.extension}</p>}
                           <p className="flex items-center">
                             <CalendarClock className="mr-1 h-3 w-3"/> 
-                            <strong>Registered/Renewed:</strong> {new Date(agent.timestamp).toLocaleString()}
+                            <strong>Registered/Renewed:</strong> {isClientMounted ? new Date(agent.timestamp).toLocaleString() : agent.timestamp}
                           </p>
                            <p className="flex items-center">
                              <CalendarClock className="mr-1 h-3 w-3 text-green-600"/>
-                             <strong>Cert Valid From:</strong> {new Date(agent.agentCertificate.validFrom).toLocaleString()}
+                             <strong>Cert Valid From:</strong> {isClientMounted ? new Date(agent.agentCertificate.validFrom).toLocaleString() : agent.agentCertificate.validFrom}
                            </p>
                            <p className="flex items-center">
                              <CalendarClock className="mr-1 h-3 w-3 text-orange-600"/>
-                            <strong>Cert Valid To:</strong> {new Date(agent.agentCertificate.validTo).toLocaleString()}
+                            <strong>Cert Valid To:</strong> {isClientMounted ? new Date(agent.agentCertificate.validTo).toLocaleString() : agent.agentCertificate.validTo}
                           </p>
                           {agent.isRevoked && agent.revocationTimestamp && (
                             <p className="flex items-center text-destructive">
                               <CalendarX className="mr-1 h-3 w-3"/>
-                              <strong>Revoked On:</strong> {new Date(agent.revocationTimestamp).toLocaleString()}
+                              <strong>Revoked On:</strong> {isClientMounted && agent.revocationTimestamp ? new Date(agent.revocationTimestamp).toLocaleString() : (agent.revocationTimestamp || "Loading...")}
                             </p>
                           )}
                           <div>
@@ -456,6 +461,4 @@ const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, l
     {children}
   </div>
 )
-
-
     
