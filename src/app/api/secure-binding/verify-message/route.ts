@@ -17,14 +17,18 @@ interface SignedCertificate extends CertificatePayload {
 }
 
 export async function POST(request: Request) {
+  let certificateStringified: string | undefined; // Define outside try block for wider scope in catch
   try {
-    const { message, signature, certificateStringified } = await request.json();
+    const body = await request.json();
+    certificateStringified = body.certificateStringified; // Assign here
+    const { message, signature } = body;
+
     if (typeof message !== 'string' || !signature || !certificateStringified) {
       return NextResponse.json({ error: 'Message, signature, and stringified certificate are required' }, { status: 400 });
     }
 
-    const caCryptoKeys = getOrInitializeCACryptoKeys(); // Corrected function call
-    if (!caCryptoKeys || !caCryptoKeys.publicKey) { // Added a check for publicKey as well
+    const caCryptoKeys = getOrInitializeCACryptoKeys(); 
+    if (!caCryptoKeys || !caCryptoKeys.publicKey) { 
       return NextResponse.json({ error: 'CA not initialized or public key missing. Cannot verify certificate.' }, { status: 500 });
     }
 
@@ -33,10 +37,9 @@ export async function POST(request: Request) {
 
     try {
       certificate = JSON.parse(certificateStringified);
-      // Extract details from the parsed certificate to return in the response
       parsedCertificateInfo = {
         subjectAgentId: certificate.subjectAgentId,
-        subjectPublicKey: certificate.subjectPublicKey, // Though typically not shown directly in summary
+        subjectPublicKey: certificate.subjectPublicKey,
         subjectAnsEndpoint: certificate.subjectAnsEndpoint,
         issuer: certificate.issuer,
         validFrom: certificate.validFrom,
@@ -53,12 +56,11 @@ export async function POST(request: Request) {
        }, { status: 400 });
     }
     
-    // Step 1: Verify the certificate itself
     const { signature: certSignature, ...certPayload } = certificate;
     if (!certSignature) {
         return NextResponse.json({ 
             error: 'Certificate is missing its own signature.',
-            verifiedCertificateInfo: parsedCertificateInfo, // Still return parsed info if available
+            verifiedCertificateInfo: parsedCertificateInfo,
             certificateValid: false,
             messageSignatureValid: false,
             overallStatus: 'failed',
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
     }
 
     const verifyCert = crypto.createVerify('SHA256');
-    verifyCert.update(JSON.stringify(certPayload)); // Verify the payload part
+    verifyCert.update(JSON.stringify(certPayload)); 
     verifyCert.end();
     const certificateValid = verifyCert.verify(caCryptoKeys.publicKey, certSignature, 'base64');
 
@@ -76,14 +78,13 @@ export async function POST(request: Request) {
       return NextResponse.json({
         verifiedCertificateInfo: parsedCertificateInfo,
         certificateValid: false,
-        messageSignatureValid: false, // If cert is invalid, no need to check message sig
+        messageSignatureValid: false, 
         overallStatus: 'failed',
         details: 'Certificate signature is invalid (not signed by trusted CA).',
       });
     }
     console.log('Certificate successfully verified against CA public key.');
 
-    // Step 2: Verify the message signature using the public key from the (now trusted) certificate
     const verifyMsg = crypto.createVerify('SHA256');
     verifyMsg.update(message);
     verifyMsg.end();
@@ -105,9 +106,8 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Error verifying message:', error);
-    // Try to return parsedCertificateInfo even in case of other errors if it was parsed
     let certInfoForErrorDisplay = null;
-    if (certificateStringified) {
+    if (certificateStringified) { // Use the variable from outer scope
         try {
             const parsedForError = JSON.parse(certificateStringified);
             certInfoForErrorDisplay = {
@@ -116,7 +116,6 @@ export async function POST(request: Request) {
                 issuer: parsedForError.issuer,
             };
         } catch { 
-            // If parsing fails here, certInfoForErrorDisplay remains null
         }
     }
 
