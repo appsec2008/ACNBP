@@ -7,6 +7,7 @@ import type { AgentService, NegotiationResult, NegotiationRequestInput, Negotiat
 import { getDb } from '@/lib/db';
 
 function normalizeCapability(capability: string): string {
+  if (!capability) return "";
   return capability.toLowerCase().replace(/\s+/g, '').trim();
 }
 
@@ -19,7 +20,6 @@ export async function POST(request: NextRequest) {
     const offersForAI: EvaluateOffersInput['capabilityOffers'] = [];
 
     const db = await getDb();
-    // Fetch only non-revoked agents
     const registeredAgentRows = await db.all<Array<AgentRegistration & { agentCertificate: string, protocolExtensions: string }>>(
         'SELECT * FROM agents WHERE isRevoked = 0 OR isRevoked IS NULL'
     );
@@ -29,10 +29,9 @@ export async function POST(request: NextRequest) {
     for (const agent of registeredAgentRows) {
         let parsedProtocolExtensions: { [key: string]: any } = {};
         try {
-            parsedProtocolExtensions = JSON.parse(agent.protocolExtensions);
+            parsedProtocolExtensions = JSON.parse(agent.protocolExtensions as string);
         } catch (e) {
             console.warn(`Could not parse protocolExtensions for agent ${agent.id}: ${e}`);
-            // Continue with empty extensions if parsing fails
         }
 
         let agentDescription = `Agent offering ${agent.agentCapability}`;
@@ -42,30 +41,34 @@ export async function POST(request: NextRequest) {
             agentDescription = parsedProtocolExtensions.description;
         }
         
-        // Attempt to get cost and QoS from protocolExtensions
-        // These paths are speculative and depend on how users might structure their PEs.
-        // For A2A, cost/QoS might be per-skill or negotiated, not typically top-level in AgentCard.
         let agentCost: number | undefined = undefined;
         if (typeof parsedProtocolExtensions.cost === 'number') {
             agentCost = parsedProtocolExtensions.cost;
         } else if (agent.protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.defaultCost === 'number') {
             agentCost = parsedProtocolExtensions.a2aAgentCard.defaultCost;
+        } else if (parsedProtocolExtensions.defaultCosts?.fixedCost) { // From ACNBP common definitions
+            agentCost = parsedProtocolExtensions.defaultCosts.fixedCost;
         }
 
 
-        let agentQos: number | undefined = undefined;
+        let agentQos: number | undefined = undefined; // Expecting 0-1 scale
         if (typeof parsedProtocolExtensions.qos === 'number' && parsedProtocolExtensions.qos >= 0 && parsedProtocolExtensions.qos <= 1) {
             agentQos = parsedProtocolExtensions.qos;
         } else if (agent.protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.defaultQos === 'number' ) {
-             // Assuming defaultQos is also 0-1 range
             agentQos = parsedProtocolExtensions.a2aAgentCard.defaultQos;
+        } else if (parsedProtocolExtensions.defaultQoS?.customParameters?.overallSatisfaction) { // Example custom QoS field
+             // Assuming overallSatisfaction is a 0-1 score
+            const customQos = parsedProtocolExtensions.defaultQoS.customParameters.overallSatisfaction;
+            if (typeof customQos === 'number' && customQos >=0 && customQos <=1) {
+                agentQos = customQos;
+            }
         }
 
 
         const currentService: AgentService = {
             id: agent.id,
             name: agent.agentID,
-            capability: agent.agentCapability, // Primary registered capability
+            capability: agent.agentCapability, 
             description: agentDescription,
             qos: agentQos, 
             cost: agentCost,
@@ -78,49 +81,71 @@ export async function POST(request: NextRequest) {
 
 
     const normalizedDesiredCapability = desiredCapability ? normalizeCapability(desiredCapability) : "";
-    const isQoSIgnored = requiredQos <= 0.001; // Using a small epsilon for float comparison
-    const isCostIgnored = maxCost >= 999999;  // A large number indicates cost is not a concern
+    const isQoSIgnored = requiredQos <= 0.001;
+    const isCostIgnored = maxCost >= 999999;
 
     potentialServices.forEach(service => {
       let serviceMatchStatus: NegotiationResult['matchStatus'] = 'failed'; 
       const messages: string[] = [];
       let capabilityMatched = false;
+      let primaryCapabilityMatched = false;
+      let a2aSkillMatched = false;
 
-      // 1. Capability & Skill Check
       if (!normalizedDesiredCapability) { 
         capabilityMatched = true;
         messages.push("Capability requirement not specified by user; considering all agents.");
       } else {
         const agentRecord = registeredAgentRows.find(ar => ar.id === service.id);
         if (agentRecord) {
-            const primaryCapabilityNorm = normalizeCapability(agentRecord.agentCapability);
-            if (primaryCapabilityNorm.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(primaryCapabilityNorm)) {
+            const primaryRegisteredCapabilityNorm = normalizeCapability(agentRecord.agentCapability);
+            if (primaryRegisteredCapabilityNorm.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(primaryRegisteredCapabilityNorm)) {
+                primaryCapabilityMatched = true;
                 capabilityMatched = true;
                 messages.push(`Primary capability '${agentRecord.agentCapability}' matches desired '${desiredCapability}'.`);
             }
 
             if (agentRecord.protocol === 'a2a') {
                 try {
-                    const pExt = JSON.parse(agentRecord.protocolExtensions);
-                    if (pExt.a2aAgentCard && Array.isArray(pExt.a2aAgentCard.skills)) {
+                    const pExt = JSON.parse(agentRecord.protocolExtensions as string);
+                    if (pExt.a2aAgentCard && Array.isArray(pExt.a2aAgentCard.skills) && pExt.a2aAgentCard.skills.length > 0) {
                         for (const skill of pExt.a2aAgentCard.skills) {
-                            if (skill.id && normalizeCapability(skill.id).includes(normalizedDesiredCapability)) {
-                                capabilityMatched = true;
-                                messages.push(`A2A skill ID '${skill.id}' matches desired '${desiredCapability}'.`);
+                            const skillIdNorm = skill.id ? normalizeCapability(skill.id) : "";
+                            const skillNameNorm = skill.name ? normalizeCapability(skill.name) : "";
+
+                            if (skillIdNorm && (skillIdNorm.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(skillIdNorm))) {
+                                a2aSkillMatched = true;
+                                messages.push(`A2A skill ID '${skill.id}' in AgentCard matches desired '${desiredCapability}'.`);
                                 break; 
                             }
-                            if (skill.name && normalizeCapability(skill.name).includes(normalizedDesiredCapability)) {
-                                capabilityMatched = true;
-                                messages.push(`A2A skill name '${skill.name}' matches desired '${desiredCapability}'.`);
+                            if (skillNameNorm && (skillNameNorm.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(skillNameNorm))) {
+                                a2aSkillMatched = true;
+                                messages.push(`A2A skill name '${skill.name}' in AgentCard matches desired '${desiredCapability}'.`);
                                 break;
                             }
                         }
+                        if (a2aSkillMatched) {
+                            capabilityMatched = true; 
+                        } else if (!primaryCapabilityMatched) { 
+                            messages.push(`A2A agent: None of the listed skills in 'a2aAgentCard.skills' matched '${desiredCapability}'.`);
+                        }
+                    } else if (!primaryCapabilityMatched) { 
+                         messages.push(`A2A agent: 'a2aAgentCard.skills' not found, not an array, or empty. Cannot match specific A2A skills for '${desiredCapability}'.`);
                     }
-                } catch (e) { /* ignore parsing error for this check */ }
+                } catch (e) {
+                    if (!primaryCapabilityMatched) { 
+                        messages.push(`A2A agent: Error parsing protocolExtensions; specific A2A skills could not be verified for '${desiredCapability}'.`);
+                    } else { 
+                        messages.push(`A2A agent: Error parsing protocolExtensions for A2A skills (primary capability already matched).`);
+                    }
+                }
             }
-        }
-        if (!capabilityMatched) {
-             messages.push(`No matching capability or skill found for desired '${desiredCapability}'. Primary was '${service.capability}'.`);
+        
+            if (!capabilityMatched) {
+                messages.push(`No matching primary capability or A2A skills found for desired '${desiredCapability}'. Agent's primary capability: '${agentRecord.agentCapability}'.`);
+            }
+        } else {
+             messages.push(`Error: Could not find original registration details for service ID ${service.id} to perform capability/skill matching.`);
+             capabilityMatched = false; // Ensure it's false if agentRecord not found
         }
       }
 
@@ -131,8 +156,8 @@ export async function POST(request: NextRequest) {
         let qosCheckResult: 'met' | 'partially_met' | 'not_met' | 'ignored' = 'ignored';
         if (!isQoSIgnored) {
             if (service.qos === undefined) {
-                messages.push("QoS not specified by agent; cannot strictly meet requirement.");
-                qosCheckResult = 'not_met'; // Or 'ignored' if we allow agents without QoS to pass
+                messages.push("QoS not specified by agent; cannot strictly meet user's QoS requirement.");
+                qosCheckResult = 'not_met'; 
             } else if (service.qos >= requiredQos) {
                 messages.push(`Meets QoS requirement (${service.qos.toFixed(2)} >= ${requiredQos.toFixed(2)}).`);
                 qosCheckResult = 'met';
@@ -144,26 +169,26 @@ export async function POST(request: NextRequest) {
                 qosCheckResult = 'not_met';
             }
         } else {
-          messages.push("QoS requirement was not strictly specified by the user or agent QoS unknown.");
+          messages.push("QoS requirement was not strictly specified by the user, or agent QoS unknown; QoS check skipped.");
         }
 
         let costCheckResult: 'met' | 'partially_met' | 'not_met' | 'ignored' = 'ignored';
         if (!isCostIgnored) {
             if (service.cost === undefined) {
-                 messages.push("Cost not specified by agent; cannot strictly meet requirement.");
-                 costCheckResult = 'not_met'; // Or 'ignored'
+                 messages.push("Cost not specified by agent; cannot strictly meet user's cost requirement.");
+                 costCheckResult = 'not_met'; 
             } else if (service.cost <= maxCost) {
-                messages.push(`Within cost limit ($${service.cost} <= $${maxCost}).`);
+                messages.push(`Within cost limit ($${service.cost.toFixed(2)} <= $${maxCost.toFixed(2)}).`);
                 costCheckResult = 'met';
             } else if (service.cost <= maxCost * 1.2) { 
-                messages.push(`Slightly exceeds cost limit ($${service.cost} vs max $${maxCost}).`);
+                messages.push(`Slightly exceeds cost limit ($${service.cost.toFixed(2)} vs max $${maxCost.toFixed(2)}).`);
                 costCheckResult = 'partially_met';
             } else {
-                messages.push(`Exceeds cost limit ($${service.cost} > max $${maxCost}).`);
+                messages.push(`Exceeds cost limit ($${service.cost.toFixed(2)} > max $${maxCost.toFixed(2)}).`);
                 costCheckResult = 'not_met';
             }
         } else {
-          messages.push("Maximum cost requirement was not strictly specified by the user or agent cost unknown.");
+          messages.push("Maximum cost requirement was not strictly specified by the user, or agent cost unknown; cost check skipped.");
         }
         
         if (qosCheckResult === 'not_met' || costCheckResult === 'not_met') {
@@ -184,10 +209,10 @@ export async function POST(request: NextRequest) {
       if (capabilityMatched && serviceMatchStatus !== 'failed' && serviceMatchStatus !== 'capability_mismatch') {
          offersForAI.push({
           id: service.id,
-          description: service.description,
-          cost: service.cost,
-          qos: service.qos,
-          protocolCompatibility: service.protocol,
+          description: service.description, // Already sourced dynamically
+          cost: service.cost, // Already sourced dynamically or undefined
+          qos: service.qos, // Already sourced dynamically or undefined
+          protocolCompatibility: service.protocol, // From agent registration
         });
       }
     });
@@ -279,3 +304,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorResponse, { status: 500 });
   }
 }
+
+    
