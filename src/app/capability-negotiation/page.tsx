@@ -59,9 +59,12 @@ export default function CapabilityNegotiationPage() {
       
       const sortedResults = data.results.sort((a, b) => {
         const statusOrder = { 'success': 1, 'partial': 2, 'failed': 3, 'capability_mismatch': 4 };
-        // Ensure a.service and b.service exist before accessing matchStatus
-        const aStatus = a.service ? statusOrder[a.matchStatus] : statusOrder['failed'];
-        const bStatus = b.service ? statusOrder[b.matchStatus] : statusOrder['failed'];
+        
+        const aServiceValid = a && a.service;
+        const bServiceValid = b && b.service;
+
+        const aStatus = aServiceValid ? statusOrder[a.matchStatus] : statusOrder['failed'];
+        const bStatus = bServiceValid ? statusOrder[b.matchStatus] : statusOrder['failed'];
 
         if (aStatus !== bStatus) {
           return aStatus - bStatus;
@@ -72,7 +75,7 @@ export default function CapabilityNegotiationPage() {
         if (a.aiScore !== undefined) return -1;
         if (b.aiScore !== undefined) return 1;
         
-        if (a.service && b.service && a.service.name && b.service.name) {
+        if (aServiceValid && bServiceValid && a.service.name && b.service.name) {
           return a.service.name.localeCompare(b.service.name);
         }
         return 0;
@@ -202,7 +205,7 @@ export default function CapabilityNegotiationPage() {
               const service = result.service;
               const isSystemMessage = service && (service.id === "system-error" || service.id === "system-no-match" || service.id === "system-no-agents" || service.name === "System Message");
 
-              if (!service) { // Defensive check
+              if (!service) { 
                 return (
                     <Card key={`error-${index}`} className="p-4 bg-destructive/10">
                         <p className="text-destructive">Error: Service data missing for a negotiation result.</p>
@@ -241,7 +244,7 @@ export default function CapabilityNegotiationPage() {
                           result.matchStatus === 'success' ? 'text-green-700 dark:text-green-400' :
                           result.matchStatus === 'partial' ? 'text-yellow-700 dark:text-yellow-400' :
                           (isSystemMessage || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
-                          'text-red-700 dark:text-red-400' // Should not be reached if previous conditions are exhaustive
+                          'text-red-700 dark:text-red-400' 
                       }`}>{result.matchMessage}</p>
 
                       {service.protocol === 'a2a' && service.skills && service.skills.length > 0 && (
@@ -253,7 +256,7 @@ export default function CapabilityNegotiationPage() {
                             <AccordionContent className="pt-1 pb-2 pl-2 pr-1 bg-muted/30 rounded-md">
                                 {service.skills.map(skill => (
                                     <div key={skill.id} className="py-1.5 border-b border-muted last:border-b-0">
-                                        <p className="text-xs font-semibold">{skill.name}</p>
+                                        <p className="text-xs font-semibold">{skill.name || skill.id || 'Unnamed Skill'}</p>
                                         {skill.description && <p className="text-xs text-muted-foreground mt-0.5">{skill.description}</p>}
                                         {skill.tags && skill.tags.length > 0 && (
                                           <div className="mt-1 flex flex-wrap gap-1">
