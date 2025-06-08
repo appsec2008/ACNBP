@@ -61,6 +61,10 @@ export default function CapabilityNegotiationPage() {
         }
         if (a.aiScore !== undefined) return -1;
         if (b.aiScore !== undefined) return 1;
+        // Fallback for services without AI scores, maintain original order or sort by name
+        if (a.service.name && b.service.name) {
+          return a.service.name.localeCompare(b.service.name);
+        }
         return 0;
       });
       
@@ -190,8 +194,8 @@ export default function CapabilityNegotiationPage() {
                             <p className="text-sm text-muted-foreground">Offered Capability: <Badge variant="secondary">{result.service.capability}</Badge></p>
                              <p className="text-xs text-muted-foreground mt-0.5">{result.service.description}</p>
                             <div className="flex flex-wrap gap-2 mt-2 text-sm">
-                                <Badge variant="outline">QoS: {result.service.qos.toFixed(2)}</Badge>
-                                <Badge variant="outline">Cost: ${result.service.cost}</Badge>
+                                <Badge variant="outline">QoS: {typeof result.service.qos === 'number' ? result.service.qos.toFixed(2) : 'N/A'}</Badge>
+                                <Badge variant="outline">Cost: {typeof result.service.cost === 'number' ? `$${result.service.cost.toFixed(2)}` : 'N/A'}</Badge>
                                 <Badge variant="outline">Protocol: {result.service.protocol}</Badge>
                                 {result.service.ansEndpoint && result.matchStatus !== 'capability_mismatch' && (
                                   <Badge variant="outline" className="bg-primary/10 border-primary/50">
@@ -206,7 +210,7 @@ export default function CapabilityNegotiationPage() {
                         result.matchStatus === 'success' ? 'text-green-700' :
                         result.matchStatus === 'partial' ? 'text-yellow-700' :
                         (result.service.id === "system-error" || result.service.name === "System Message" || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
-                        'text-red-700'
+                        'text-red-700' // Default fallback, though should be covered.
                     }`}>{result.matchMessage}</p>
 
                     {result.aiScore !== undefined && result.aiReasoning && (
