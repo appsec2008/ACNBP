@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { BotMessageSquare, Send, CheckCircle, XCircle, Search, ShieldQuestion, Star, FileText, Loader2, AlertTriangle, Share2, PackageCheck, ScrollText } from "lucide-react";
+import { BotMessageSquare, Send, CheckCircle, XCircle, Search, ShieldQuestion, Star, FileText, Loader2, AlertTriangle, Share2, PackageCheck, ScrollText, FileJson } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,55 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+
+// Example A2A Agent Card structure to display
+const exampleA2AAgentCardJson = `{
+  "a2aAgentCard": {
+    "version": "1.2.3",
+    "name": "Example A2A Agent",
+    "description": "This is a sample A2A Agent Card structure.",
+    "url": "https://example.com/api/a2a-agent",
+    "skills": [
+      {
+        "id": "exampleSkill1",
+        "name": "Perform Example Task",
+        "description": "Details about what this skill does.",
+        "tags": ["example", "demo", "task"]
+      }
+    ],
+    "defaultInputModes": ["application/json", "text/plain"],
+    "defaultOutputModes": ["application/json"],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false,
+      "stateTransitionHistory": true
+    },
+    "securitySchemes": {
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
+    "security": [
+      { "apiKeyAuth": [] }
+    ],
+    "provider": {
+      "organization": "Example Provider Inc.",
+      "url": "https://exampleprovider.com"
+    },
+    "defaultCost": 25.00,
+    "defaultQos": 0.90
+  },
+  "cost": 25.00,
+  "qos": 0.90,
+  "customData": {
+    "notes": "Additional protocol-specific or custom fields can go here."
+  }
+}`;
+
 
 export default function CapabilityNegotiationPage() {
   const [desiredCapability, setDesiredCapability] = useState("");
@@ -112,7 +161,9 @@ export default function CapabilityNegotiationPage() {
                 qos:undefined, 
                 cost:undefined, 
                 protocol: "N/A", 
-                ansEndpoint: "N/A"
+                ansEndpoint: "N/A",
+                skills: undefined,
+                protocolExtensions: undefined,
             },
             matchStatus: 'failed',
             matchMessage: `Negotiation process failed: ${error.message || "Unknown error"}`
@@ -191,7 +242,7 @@ export default function CapabilityNegotiationPage() {
             <CardTitle>Negotiation Outcomes</CardTitle>
             <CardDescription>Results of the negotiation process with available agents.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 max-h-[calc(100vh-220px)] overflow-y-auto pr-2">
+          <CardContent className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
             {negotiationResults.length === 0 && !isLoading && (
               <p className="text-muted-foreground text-center py-8">Enter criteria and initiate negotiation to see outcomes.</p>
             )}
@@ -203,8 +254,6 @@ export default function CapabilityNegotiationPage() {
             )}
             {negotiationResults.map((result, index) => {
               const service = result.service;
-              const isSystemMessage = service && (service.id === "system-error" || service.id === "system-no-match" || service.id === "system-no-agents" || service.name === "System Message");
-
               if (!service) { 
                 return (
                     <Card key={`error-${index}`} className="p-4 bg-destructive/10">
@@ -212,6 +261,8 @@ export default function CapabilityNegotiationPage() {
                     </Card>
                 );
               }
+              const isSystemMessage = service.id === "system-error" || service.id === "system-no-match" || service.id === "system-no-agents" || service.name === "System Message";
+
 
               return (
                 <Card key={service.id || index} className="p-4 bg-card/50 shadow-md">
@@ -223,7 +274,7 @@ export default function CapabilityNegotiationPage() {
                     
                     <div className="flex-grow">
                       <CardTitle className="text-lg mb-1">{service.name || 'System Message'}</CardTitle>
-                      {!isSystemMessage && (
+                      {!isSystemMessage && service.capability && (
                           <>
                               <p className="text-sm text-muted-foreground">Offered Capability: <Badge variant="secondary">{service.capability}</Badge></p>
                                <p className="text-xs text-muted-foreground mt-0.5">{service.description || 'N/A'}</p>
@@ -249,9 +300,9 @@ export default function CapabilityNegotiationPage() {
 
                       {service.protocol === 'a2a' && service.skills && service.skills.length > 0 && (
                         <Accordion type="single" collapsible className="w-full mt-3">
-                          <AccordionItem value="a2a-skills" className="border-t border-b-0 pt-2">
-                            <AccordionTrigger className="text-sm font-medium hover:no-underline py-2 text-primary hover:text-primary/80">
-                                <PackageCheck className="mr-2 h-4 w-4" /> A2A Agent Skills ({service.skills.length})
+                          <AccordionItem value="a2a-skills" className="border-t pt-2">
+                             <AccordionTrigger className="text-sm font-medium hover:no-underline py-2 text-primary hover:text-primary/80">
+                                <PackageCheck className="mr-2 h-4 w-4" /> Google A2A Agent Card Skills ({service.skills.length})
                             </AccordionTrigger>
                             <AccordionContent className="pt-1 pb-2 pl-2 pr-1 bg-muted/30 rounded-md">
                                 {service.skills.map(skill => (
@@ -265,6 +316,18 @@ export default function CapabilityNegotiationPage() {
                                         )}
                                     </div>
                                 ))}
+                                <AccordionItem value="a2a-agent-card-example" className="border-t border-b-0 pt-2 mt-2">
+                                  <AccordionTrigger className="text-xs font-medium hover:no-underline py-1.5 text-muted-foreground hover:text-muted-foreground/80">
+                                    <FileJson className="mr-2 h-3 w-3" /> Example AgentCard JSON Structure
+                                  </AccordionTrigger>
+                                  <AccordionContent className="pt-1 pb-1 pl-1 pr-0.5 bg-muted/20 rounded-md">
+                                    <ScrollArea className="h-40"> 
+                                      <pre className="text-xs bg-background/70 p-1.5 rounded-sm whitespace-pre-wrap break-all font-mono">
+                                        {exampleA2AAgentCardJson}
+                                      </pre>
+                                    </ScrollArea>
+                                  </AccordionContent>
+                                </AccordionItem>
                             </AccordionContent>
                           </AccordionItem>
                         </Accordion>
@@ -298,4 +361,3 @@ export default function CapabilityNegotiationPage() {
     </>
   );
 }
-
