@@ -58,7 +58,7 @@ const agentsData: Omit<AgentRegistration, 'id' | 'timestamp' | 'agentCertificate
         securitySchemes: {"apiKey": {"type": "apiKey", "in": "header", "name": "X-VisionSeed-Token"}},
         security: [{"apiKey": []}],
         provider: {"organization": "VisionSolutionsSeed International", "url": "https://visionsolutionsseed.com"},
-        defaultCost": 65.50, defaultQos": 0.92 // Example cost and QoS in AgentCard
+        "defaultCost": 65.50, "defaultQos": 0.92 // Example cost and QoS in AgentCard
       },
       cost: 65.50, // Top-level cost for easier access by negotiation logic
       qos: 0.92,   // Top-level QoS
@@ -87,9 +87,9 @@ const agentsData: Omit<AgentRegistration, 'id' | 'timestamp' | 'agentCertificate
         securitySchemes: {"oauth2": {"type": "oauth2", "flows": {"clientCredentials": {"tokenUrl": "https://auth.linguatechseed.ai/token", "scopes": {"translate:doc_secure": "Securely translate documents"}}}}},
         security: [{"oauth2": ["translate:doc_secure"]}],
         provider: {"organization": "LinguaTechSeed AI Solutions", "url": "https://linguatechseed.ai"},
-        defaultCost": 150.00, defaultQos": 0.88
+        "defaultCost": 150.00, "defaultQos": 0.88
       },
-      cost": 150.00, qos": 0.88,
+      cost: 150.00, qos: 0.88,
       customData: {"compliance": ["HIPAA-ready-seed", "GDPR-compliant-seed"], "maxFileSizeMB": 50}
     }
   },
@@ -111,14 +111,14 @@ const agentsData: Omit<AgentRegistration, 'id' | 'timestamp' | 'agentCertificate
           { id: "SectorSentimentAnalysis", name: "Market Sector Sentiment Analysis", description: "Provides sentiment overview and trend analysis for a given market sector.", tags: ["market-sector", "analysis", "trends", "sentiment"] }
         ],
         defaultInputModes: ["application/json"], defaultOutputModes: ["application/json"],
-        capabilities": {"streaming": true, "pushNotifications": false, "historicalData": true},
-        securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}},
-        security": [{"bearerAuth": []}],
-        provider": {"organization": "FinIntelSeed Corp.", "url": "https://finintelseed.co"},
-        defaultCost": 250.75, defaultQos": 0.79
+        capabilities: {"streaming": true, "pushNotifications": false, "historicalData": true},
+        securitySchemes: {"bearerAuth": {"type": "http", "scheme": "bearer"}},
+        security: [{"bearerAuth": []}],
+        provider: {"organization": "FinIntelSeed Corp.", "url": "https://finintelseed.co"},
+        "defaultCost": 250.75, "defaultQos": 0.79
       },
-      cost": 250.75, qos": 0.79,
-      customData": {"dataUpdateFrequency": "real-time-seed", "coverage": ["NYSE", "NASDAQ", "LSE"]}
+      cost: 250.75, qos: 0.79,
+      customData: {"dataUpdateFrequency": "real-time-seed", "coverage": ["NYSE", "NASDAQ", "LSE"]}
     }
   },
   {
@@ -203,5 +203,4 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
   console.log(message);
   return { success: errorCount === 0, message, seededCount, skippedCount, errorCount, errors };
 }
-
     
