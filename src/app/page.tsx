@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { LayoutDashboard, BotMessageSquare, ListTree, ShieldCheck, BrainCircuit, ExternalLink, Share2 } from "lucide-react";
+import { LayoutDashboard, BotMessageSquare, ListTree, ShieldCheck, BrainCircuit, ExternalLink, Share2, SearchCode } from "lucide-react";
 
 interface Feature {
   title: string;
@@ -24,10 +24,16 @@ const initialFeaturesData: Feature[] = [
     href: "/capability-negotiation",
   },
   {
-    title: "ANS Integration with ACNBP",
+    title: "ANS Agent Registry",
     description: "Explore ANS functionalities: agent registration and name resolution, providing candidate lists for ACNBP.",
     icon: ListTree,
     href: "/agent-directory",
+  },
+  {
+    title: "ANS Resolution",
+    description: "Resolve an ANSName to its endpoint and certificate. Supports ACNBP's need to lookup specific agent details.",
+    icon: SearchCode,
+    href: "/ans-resolution",
   },
   {
     title: "ACNBP: Secure Binding",
@@ -62,11 +68,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         {initialFeaturesData.map((feature) => (
           <Card key={feature.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
-            <CardContent className="p-6 flex-grow flex flex-col">
-              <div className="flex items-center mb-3">
-                <feature.icon className="h-7 w-7 text-primary mr-3" />
-                <CardTitle className="text-2xl">{feature.title}</CardTitle>
+            <CardHeader>
+              <div className="flex items-center mb-1">
+                <feature.icon className="h-6 w-6 text-primary mr-2" />
+                <CardTitle className="text-xl">{feature.title}</CardTitle>
               </div>
+            </CardHeader>
+            <CardContent className="flex-grow flex flex-col pt-0">
               <CardDescription className="mb-4 min-h-[4em] flex-grow">{feature.description}</CardDescription>
               <Button asChild variant="outline" className="mt-auto">
                 {feature.isExternal ? (
