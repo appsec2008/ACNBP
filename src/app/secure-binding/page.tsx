@@ -38,14 +38,14 @@ const SIMULATED_NEGOTIATED_AGENT = {
 const SERVER_AGENT_DETAILS = {
     id: "ServerAgentB",
     name: "SecureServiceEndpoint (Server)",
-    ansEndpoint: "a2a://SecureService.GenericEndpoint.ANS.v1.0.0.main" // Updated protocol name
+    ansEndpoint: "acnbp://SecureService.GenericEndpoint.ACNBP.v1.0.0.main"
 }
 
 export default function SecureBindingPage() {
   const [caPublicKey, setCaPublicKey] = useState<string | null>(null);
   const [agentA, setAgentA] = useState<AgentState>({ id: "ClientAgentPlaceholder", ansEndpoint: null, publicKey: null, certificate: null });
   const [agentB, setAgentB] = useState<AgentState>({ id: SERVER_AGENT_DETAILS.id, ansEndpoint: SERVER_AGENT_DETAILS.ansEndpoint, publicKey: null, certificate: null });
-  const [messageToSign, setMessageToSign] = useState<string>("Hello Secure Service, I'd like to bind.");
+  const [messageToSign, setMessageToSign] = useState<string>("Hello Secure Service, I'd like to bind (ACNBP SSS).");
   const [signedMessage, setSignedMessage] = useState<{ message: string; signature: string; certificate: any } | null>(null);
   
   const [bindingLog, setBindingLog] = useState<BindingLogEntry[]>([]);
@@ -110,13 +110,13 @@ export default function SecureBindingPage() {
     });
     setNegotiatedAgentLoaded(true);
     logEntry(
-      "1. Load Negotiated Agent", 
-      `Simulated loading of '${SIMULATED_NEGOTIATED_AGENT.name}'. ID: ${SIMULATED_NEGOTIATED_AGENT.id}, ANS Endpoint: ${SIMULATED_NEGOTIATED_AGENT.ansEndpoint}. This agent will act as the client.`, 
+      "1. Load Client Agent (Post-ACNBP Selection)", 
+      `Simulated loading of Client Agent '${SIMULATED_NEGOTIATED_AGENT.name}' (ID: ${SIMULATED_NEGOTIATED_AGENT.id}, ANS Endpoint: ${SIMULATED_NEGOTIATED_AGENT.ansEndpoint}). This agent has completed ACNBP negotiation and is ready for binding.`, 
       'info', 
       UserCheck,
       { agentId: SIMULATED_NEGOTIATED_AGENT.id, ansEndpoint: SIMULATED_NEGOTIATED_AGENT.ansEndpoint }
     );
-    toast({ title: "Agent Loaded", description: `${SIMULATED_NEGOTIATED_AGENT.name} details loaded for binding.` });
+    toast({ title: "Client Agent Loaded", description: `${SIMULATED_NEGOTIATED_AGENT.name} details loaded for binding.` });
   };
 
   const setupCA = async () => {
@@ -159,7 +159,7 @@ export default function SecureBindingPage() {
         { agentId: agentState.id, agentPublicKey: keyData.publicKey, agentAnsEndpoint: agentState.ansEndpoint },
         `${stepPrefix === "3a" ? "3b" : "4b"}. Issue ${agentDisplayName} Certificate (ID, PubKey, ANS Endpoint)`,
         `${agentState.id}Cert`,
-        `${agentDisplayName} certificate issued. Details (ID, PubKey, ANS Endpoint) available in log.`,
+        `${agentDisplayName} certificate issued. Details (ID, PubKey, ANS Endpoint) available in log. Used for ACNBP message signing.`,
         `Failed to issue ${agentDisplayName} certificate.`
       );
       if (certData) {
@@ -171,16 +171,16 @@ export default function SecureBindingPage() {
   const agentASignMessage = async () => {
     if (!agentA.certificate || !messageToSign || !agentA.id) {
       toast({ title: "Missing Info", description: "Client Agent (Agent A) must be initialized (keys & cert) and message must be provided.", variant: "destructive" });
-      logEntry("5. Sign Message", "Client Agent (Agent A) not fully initialized or message empty.", 'error', AlertTriangle);
+      logEntry("5. Sign Message (ACNBP SSS)", "Client Agent (Agent A) not fully initialized or message empty.", 'error', AlertTriangle);
       return;
     }
     const data = await handleApiCall(
       '/api/secure-binding/sign-message',
       'POST',
       { agentId: agentA.id, message: messageToSign },
-      `5. Client Agent (${agentA.id}) Signs Message`,
+      `5. Client Agent (${agentA.id}) Signs Message (e.g., ACNBP Skill Set Acceptance)`,
       'signMsg',
-      `Message signed by Client Agent (${agentA.id}). Certificate and signature ready to be "sent". View details for signature and certificate.`,
+      `Message signed by Client Agent (${agentA.id}). Certificate and signature ready to be 'sent' to Server Agent.`,
       `Failed to sign message for Client Agent (${agentA.id}).`
     );
     if (data?.signature) {
@@ -191,7 +191,7 @@ export default function SecureBindingPage() {
   const agentBVerifyMessage = async () => {
     if (!signedMessage) {
       toast({ title: "Missing Info", description: "No signed message available to verify.", variant: "destructive" });
-      logEntry("6. Verify Message", "No signed message from Client Agent.", 'error', AlertTriangle);
+      logEntry("6. Verify Message (ACNBP SSS & Client Cert)", "No signed message from Client Agent.", 'error', AlertTriangle);
       return;
     }
     if (!caPublicKey) {
@@ -208,14 +208,14 @@ export default function SecureBindingPage() {
         signature: signedMessage.signature,
         certificateStringified: JSON.stringify(signedMessage.certificate)
       },
-      `6. Server Agent (${agentB.id}) Verifies Message & Client's Certificate`,
+      `6. Server Agent (${agentB.id}) Verifies Client's Message & Certificate (e.g., ACNBP SSS)`,
       'verifyMsg',
-      `Verification processed for Client. Check details below.`,
+      `Verification processed for Client Agent. Check details for outcome. If successful, Server Agent would send Binding Confirmation (BC).`,
       `Verification process failed for Server Agent (${agentB.id}).`
     );
 
     if (verificationResult?.overallStatus === 'success') {
-        toast({ title: 'Verification Successful', description: verificationResult.details || `Message and certificate verified.`});
+        toast({ title: 'Verification Successful', description: verificationResult.details || `Message and certificate verified. ACNBP Binding Confirmation would follow.`});
     } else if (verificationResult) { 
         toast({ title: 'Verification Failed', description: verificationResult.details || 'Check log for details.', variant: 'destructive'});
     }
@@ -224,21 +224,21 @@ export default function SecureBindingPage() {
   return (
     <>
       <PageHeader
-        title="Secure Agent Binding Demonstration"
-        description="Simulate binding between a client (loaded from negotiation) and a server. CA signs certificates binding Agent ID, Public Key, & ANS Endpoint. Client signs a message. Server verifies the client's certificate against CA and then the message signature against the client's certificate (all within the ANS framework)."
+        title="ACNBP: Secure Agent Binding"
+        description="Simulate the secure binding phase of ACNBP. A client agent (post-negotiation) and a server agent use CA-issued certificates (binding Agent ID, Public Key, & ANS Endpoint) for mutual authentication. The client signs a message (e.g., Skill Set Acceptance - SSS), and the server verifies it before confirming the binding (BC)."
         icon={ShieldCheck}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1 shadow-lg">
           <CardHeader>
-            <CardTitle>Binding Protocol Steps</CardTitle>
-            <CardDescription>Execute steps to simulate secure binding.</CardDescription>
+            <CardTitle>ACNBP Binding Protocol Steps</CardTitle>
+            <CardDescription>Execute steps to simulate secure binding phase of ACNBP.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button onClick={loadNegotiatedAgent} disabled={isLoading['loadAgent']} className="w-full justify-start">
               {isLoading['loadAgent'] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
-              1. Load Negotiated Client Agent
+              1. Load Client (Post-Negotiation)
             </Button>
             <Button onClick={setupCA} disabled={isLoading['caSetupPost'] || isLoading['caSetupGet'] || !negotiatedAgentLoaded} className="w-full justify-start">
               {isLoading['caSetupPost'] || isLoading['caSetupGet'] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
@@ -250,7 +250,7 @@ export default function SecureBindingPage() {
               className="w-full justify-start"
             >
               {isLoading[`${agentA.id}Keys`] || isLoading[`${agentA.id}Cert`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Fingerprint className="mr-2 h-4 w-4" />}
-              3. Initialize Client Agent (Keys & Cert)
+              3. Init Client Agent (Keys & Cert)
             </Button>
             <Button 
               onClick={() => initializeAgent(agentB, setAgentB, `Server (${agentB.id})`, "4a")} 
@@ -258,21 +258,21 @@ export default function SecureBindingPage() {
               className="w-full justify-start"
             >
               {isLoading[`${agentB.id}Keys`] || isLoading[`${agentB.id}Cert`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Server className="mr-2 h-4 w-4" />}
-              4. Initialize Server Agent (Keys & Cert)
+              4. Init Server Agent (Keys & Cert)
             </Button>
             
             <div className="space-y-2 pt-2 border-t">
-              <Label htmlFor="messageToSign">Message from Client Agent ({agentA.id})</Label>
+              <Label htmlFor="messageToSign">Message from Client ({agentA.id}) (e.g., ACNBP SSS)</Label>
               <Textarea id="messageToSign" value={messageToSign} onChange={(e) => setMessageToSign(e.target.value)} placeholder="Enter message to sign..." disabled={!agentA.certificate}/>
               <Button onClick={agentASignMessage} disabled={!agentA.certificate || isLoading['signMsg']} className="w-full justify-start">
                 {isLoading['signMsg'] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
-                5. Client Signs & Prepares Message
+                5. Client Signs & Prepares SSS
               </Button>
             </div>
 
             <Button onClick={agentBVerifyMessage} disabled={!signedMessage || isLoading['verifyMsg'] || !agentB.certificate} className="w-full justify-start">
                 {isLoading['verifyMsg'] ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
-                6. Server Verifies Message & Certificate
+                6. Server Verifies SSS & Client Cert
             </Button>
           </CardContent>
            <CardFooter>
@@ -282,8 +282,8 @@ export default function SecureBindingPage() {
 
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader>
-            <CardTitle>Binding Log & Cryptographic Artifacts</CardTitle>
-            <CardDescription>Tracks the steps and shows cryptographic data (e.g., Public Keys, Signed Certificates including Agent IDs & ANS Endpoints).</CardDescription>
+            <CardTitle>ACNBP Binding Log & Artifacts</CardTitle>
+            <CardDescription>Tracks steps & shows crypto data (Public Keys, Signed Certs for ACNBP message signing).</CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px] bg-muted/30 rounded-md p-1">

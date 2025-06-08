@@ -28,7 +28,7 @@ export default function ANSAgentRegistryPage() {
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({ form: false, list: true });
 
   // Form state
-  const [protocol, setProtocol] = useState<ANSProtocol | "">("a2a"); // Initialized to "a2a"
+  const [protocol, setProtocol] = useState<ANSProtocol | "">("a2a");
   const [agentID, setAgentID] = useState("");
   const [agentCapability, setAgentCapability] = useState("");
   const [provider, setProvider] = useState("");
@@ -200,8 +200,8 @@ export default function ANSAgentRegistryPage() {
   return (
     <>
       <PageHeader
-        title="ANS Agent Registry"
-        description="Register, discover, renew, and revoke agents. During registration, a certificate is issued by the CA, binding the agent's identity (ID, Public Key, ANSName/Endpoint). This certificate is stored with the registration."
+        title="ANS Agent Registry (for ACNBP)"
+        description="Register, discover, renew, and revoke agents in the ANS. Registered agents provide their certificates and protocol extensions, becoming candidates for ACNBP discovery (ANRI list)."
         icon={ListTree}
       />
 
@@ -383,7 +383,3 @@ const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, l
     {children}
   </div>
 )
-
-
-
-

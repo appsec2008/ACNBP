@@ -3,7 +3,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card"; // Added CardHeader
+import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LayoutDashboard, BotMessageSquare, ListTree, ShieldCheck, BrainCircuit, ExternalLink } from "lucide-react";
@@ -17,26 +17,26 @@ interface Feature {
 
 const initialFeaturesData: Feature[] = [
   {
-    title: "Capability Negotiation",
-    description: "Demonstrate agents negotiating capabilities based on requirements and offers, often using ANS for discovery.",
+    title: "ACNBP: Capability Negotiation",
+    description: "Demonstrate agents negotiating capabilities based on requirements and offers, a core ACNBP process following ANS discovery.",
     icon: BotMessageSquare,
     href: "/capability-negotiation",
   },
   {
-    title: "Agent Name Service (ANS)",
-    description: "Explore core ANS functionalities: agent registration in the ANS Registry and name resolution.",
+    title: "ANS Integration with ACNBP",
+    description: "Explore ANS functionalities: agent registration and name resolution, providing candidate lists for ACNBP.",
     icon: ListTree,
-    href: "/agent-directory", // Link to agent-directory for registry, resolution link is separate
+    href: "/agent-directory",
   },
   {
-    title: "Secure Agent Binding",
-    description: "Explore mechanisms for establishing secure bindings between agents using CA-issued certificates obtained via ANS registration.",
+    title: "ACNBP: Secure Binding",
+    description: "Explore mechanisms for establishing secure bindings between agents using CA-issued certificates, integral to ACNBP.",
     icon: ShieldCheck,
     href: "/secure-binding",
   },
   {
-    title: "AI-Powered Offer Evaluation",
-    description: "Utilize AI to evaluate capability offers from agents, potentially discovered through ANS.",
+    title: "ACNBP: AI Offer Evaluation",
+    description: "Utilize AI to evaluate capability offers from agents, supporting the Skill Set Evaluation (SSE) step in ACNBP.",
     icon: BrainCircuit,
     href: "/offer-evaluation",
   },
@@ -46,8 +46,8 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-2">
       <PageHeader
-        title="Agent Name Service (ANS) Protocol"
-        description="Explore the core components and functionalities of the Agent Name Service (ANS). This platform demonstrates how agents can be registered, discovered via ANSNames, and how their identities can be secured within an agent ecosystem."
+        title="Agent Capability Negotiation and Binding Protocol (ACNBP)"
+        description="Explore the core components of ACNBP, including how it leverages ANS for discovery, facilitates capability negotiation, secure binding, and AI-driven offer evaluation."
         icon={LayoutDashboard}
       />
 
@@ -72,13 +72,11 @@ export default function DashboardPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>About Agent Name Service (ANS)</CardTitle>
+          <CardTitle>About ACNBP Protocol</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0"> {/* Adjusted padding here if CardHeader is present */}
+        <CardContent className="pt-0">
           <p className="text-muted-foreground">
-            The Agent Name Service (ANS) provides a standardized framework
-            for dynamic discovery, interaction, and collaboration in multi-agent systems. This platform offers tools to understand and implement
-            key aspects of the protocol, from agent registration and secure identity establishment to name resolution and capability negotiation.
+            The Agent Capability Negotiation and Binding Protocol (ACNBP) provides a framework for precise and secure interactions in multi-agent systems, operating with an Agent Name Service (ANS) for discovery. This platform demonstrates key ACNBP concepts.
           </p>
         </CardContent>
       </Card>

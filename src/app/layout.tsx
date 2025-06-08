@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Agent Name Service (ANS) Protocol',
-  description: 'A platform for demonstrating Agent Name Service (ANS) functionalities.',
+  title: 'Agent Capability Negotiation and Binding Protocol (ACNBP)',
+  description: 'A platform demonstrating the Agent Capability Negotiation and Binding Protocol (ACNBP) and its interactions with ANS.',
 };
 
 export default function RootLayout({

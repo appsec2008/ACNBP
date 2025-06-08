@@ -99,8 +99,8 @@ export default function CapabilityNegotiationPage() {
   return (
     <>
       <PageHeader
-        title="Capability Negotiation"
-        description="Initiate and observe the capability negotiation process. Define requirements, and the system will find matching service provider agents (potentially discovered via ANS). Optionally, provide security requirements to leverage AI for offer evaluation."
+        title="ACNBP: Capability Negotiation"
+        description="Initiate ACNBP's negotiation phase. Define requirements, and the system will simulate finding matching provider agents (discovered via ANS) and evaluating their offers. Optionally, use security requirements for AI evaluation."
         icon={BotMessageSquare}
       />
 

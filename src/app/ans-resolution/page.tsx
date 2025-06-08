@@ -86,8 +86,8 @@ export default function ANSResolutionPage() {
   return (
     <>
       <PageHeader
-        title="ANS Name Resolution"
-        description="Resolve an Agent Name Service (ANSName) by its components to retrieve its endpoint and CA-issued agent certificate. The Agent Registry signs this response."
+        title="ANS Name Resolution (Supporting ACNBP)"
+        description="Resolve an Agent Name Service (ANSName) by its components to retrieve its endpoint and CA-issued agent certificate. This supports ACNBP by allowing lookup of specific agent details (endpoint, certificate) selected during Candidate Pre-Screening."
         icon={SearchCode}
       />
 
@@ -191,4 +191,3 @@ export default function ANSResolutionPage() {
     </>
   );
 }
-

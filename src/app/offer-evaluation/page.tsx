@@ -99,16 +99,16 @@ export default function OfferEvaluationPage() {
   return (
     <>
       <PageHeader
-        title="AI-Powered Offer Evaluation"
-        description="Leverage AI to assess capability offers based on cost, Quality of Service (QoS), protocol compatibility, and your specific security requirements. This tool helps optimize agent selection by providing a scored and reasoned evaluation for each offer within the ANS framework."
+        title="ACNBP: AI-Powered Offer Evaluation"
+        description="Leverage AI to assess capability offers (Skill Set Offers - SSOs in ACNBP). Evaluate based on cost, Quality of Service (QoS), protocol compatibility, and security requirements to support the Skill Set Evaluation (SSE) step of ACNBP."
         icon={BrainCircuit}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-1 shadow-lg">
           <CardHeader>
-            <CardTitle>Evaluation Criteria</CardTitle>
-            <CardDescription>Define the parameters for evaluating capability offers. Only description is required per offer.</CardDescription>
+            <CardTitle>Evaluation Criteria (for ACNBP SSOs)</CardTitle>
+            <CardDescription>Define parameters for evaluating Skill Set Offers. Only description is required per offer.</CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -128,7 +128,7 @@ export default function OfferEvaluationPage() {
                 />
 
                 <div>
-                  <FormLabel>Capability Offers</FormLabel>
+                  <FormLabel>Capability Offers (SSOs)</FormLabel>
                   {fields.map((field, index) => (
                     <Card key={field.id} className="mt-2 mb-4 p-4 border rounded-md shadow-sm">
                       <div className="space-y-4">
@@ -180,7 +180,7 @@ export default function OfferEvaluationPage() {
                             <FormItem>
                               <FormLabel>Protocol Compatibility (Optional)</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g., ANS/1.0, HTTP/2" {...offerField} />
+                                <Input placeholder="e.g., ACNBP-A2A/1.0, HTTP/2" {...offerField} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
