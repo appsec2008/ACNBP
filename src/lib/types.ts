@@ -97,6 +97,7 @@ export interface ANSCapabilityResponse {
   ansName: string; // The ANSName that was resolved.
   endpoint: string; // The resolved agent endpoint (e.g., URL, service binding from protocolExtensions)
   agentCertificate: SignedCertificate; // The agent's CA-issued certificate.
+  protocolExtensions?: { [key: string]: any }; // The full protocolExtensions object for the agent
   signature?: string; // Optional: A signature from the Agent Registry over the (Endpoint + AgentCertificate + ANSName) data, proving authenticity of this resolution response.
 }
 

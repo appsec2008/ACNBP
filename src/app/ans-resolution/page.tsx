@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { ANSCapabilityRequest, ANSCapabilityResponse, ANSProtocol } from "@/lib/types";
-import { SearchCode, Link, ShieldAlert, Loader2, FileSignature, Server, FileBadge, Globe, Fingerprint, Layers, Package, Tag, Info } from "lucide-react";
+import { SearchCode, Link, ShieldAlert, Loader2, FileSignature, Server, FileBadge, Globe, Fingerprint, Layers, Package, Tag, Info, FileJson, Puzzle } from "lucide-react";
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Helper component for form items
@@ -87,7 +87,7 @@ export default function ANSResolutionPage() {
     <>
       <PageHeader
         title="ANS Name Resolution (Supporting ACNBP)"
-        description="Resolve an Agent Name Service (ANSName) by its components to retrieve its endpoint and CA-issued agent certificate. This supports ACNBP by allowing lookup of specific agent details (endpoint, certificate) selected during Candidate Pre-Screening."
+        description="Resolve an Agent Name Service (ANSName) by its components to retrieve its endpoint, CA-issued agent certificate, and protocol-specific extensions (e.g., A2A AgentCard). This supports ACNBP by allowing lookup of specific agent details selected during Candidate Pre-Screening."
         icon={SearchCode}
       />
 
@@ -138,7 +138,7 @@ export default function ANSResolutionPage() {
         <Card className="md:col-span-2 shadow-lg">
           <CardHeader>
             <CardTitle>Resolution Result</CardTitle>
-            <CardDescription>Details of the resolved agent, if found. Includes endpoint, agent's certificate, and registry's signature (if provided).</CardDescription>
+            <CardDescription>Details of the resolved agent, if found. Includes endpoint, agent's certificate, protocol extensions, and registry's signature (if provided).</CardDescription>
           </CardHeader>
           <CardContent className="min-h-[200px]">
             {isLoading && (
@@ -164,6 +164,24 @@ export default function ANSResolutionPage() {
                   <Label className="text-sm font-medium text-muted-foreground flex items-center"><Link className="mr-2 h-4 w-4"/> Endpoint</Label>
                   <p className="text-md break-all">{resolutionResult.endpoint}</p>
                 </div>
+                
+                {resolutionResult.protocolExtensions && Object.keys(resolutionResult.protocolExtensions).length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                      {resolutionResult.ansName.startsWith('a2a://') ? 
+                        <Puzzle className="mr-2 h-4 w-4 text-indigo-600"/> : 
+                        <FileJson className="mr-2 h-4 w-4 text-purple-600"/>
+                      }
+                      {resolutionResult.ansName.startsWith('a2a://') ? 'A2A AgentCard (from Protocol Extensions)' : 'Protocol Extensions'}
+                    </Label>
+                    <ScrollArea className="h-40 mt-1">
+                      <pre className="text-xs bg-muted p-2 rounded-md whitespace-pre-wrap break-all font-mono">
+                        {JSON.stringify(resolutionResult.protocolExtensions, null, 2)}
+                      </pre>
+                    </ScrollArea>
+                  </div>
+                )}
+
                 {resolutionResult.signature && (
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground flex items-center"><FileSignature className="mr-2 h-4 w-4"/> Agent Registry Signature (over ANSName, Endpoint, Agent Cert)</Label>

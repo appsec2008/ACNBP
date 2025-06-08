@@ -82,15 +82,17 @@ export async function POST(request: NextRequest) {
       parsedProtocolExtensions = JSON.parse(row.protocolExtensions);
     } catch (e) {
       console.error(`Failed to parse protocolExtensions for ANSName '${ansName}':`, e);
-      return NextResponse.json({ error: `Corrupted protocolExtensions data for ANSName '${ansName}'.` }, { status: 500 });
+      // It's possible for protocolExtensions to be non-JSON or missing, but we shouldn't fail resolution entirely for this.
+      // We'll proceed but parsedProtocolExtensions might be null/empty.
+      parsedProtocolExtensions = {}; 
     }
     
     let endpoint: string | undefined;
     if (parsedProtocolExtensions && typeof parsedProtocolExtensions === 'object') {
-      if (protocol === 'mcp' && typeof parsedProtocolExtensions.mcpEndpoint === 'string') {
+      if (protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.url === 'string') {
+          endpoint = parsedProtocolExtensions.a2aAgentCard.url; 
+      } else if (protocol === 'mcp' && typeof parsedProtocolExtensions.mcpEndpoint === 'string') { // Example for another protocol
           endpoint = parsedProtocolExtensions.mcpEndpoint;
-      } else if (protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.url === 'string') {
-          endpoint = parsedProtocolExtensions.a2aAgentCard.url; // Corrected to use .url for A2A
       } else if (typeof parsedProtocolExtensions.endpoint === 'string') {
           // Fallback for other protocols or generic endpoint definition
           endpoint = parsedProtocolExtensions.endpoint;
@@ -105,6 +107,7 @@ export async function POST(request: NextRequest) {
       ansName: row.ansName,
       endpoint: endpoint,
       agentCertificate: parsedAgentCertificate,
+      protocolExtensions: parsedProtocolExtensions, // Include the parsed protocolExtensions
       // signature: Temporarily removed for easier testing
     };
 
