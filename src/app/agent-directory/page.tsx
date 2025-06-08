@@ -54,20 +54,43 @@ export default function ANSAgentRegistryPage() {
     fetchAgents();
   }, []);
 
-  const generateProtocolExtensionsJson = (currentProtocol: ANSProtocol | "", currentAgentId: string): string => {
+  const generateProtocolExtensionsJson = (currentProtocol: ANSProtocol | "", currentAgentId: string, currentAgentCapability: string): string => {
     if (currentProtocol === "a2a") {
       return JSON.stringify({
         "a2aAgentCard": {
-          "agentCardVersion": "1.0",
-          "agentId": currentAgentId || "placeholder-agent-id",
-          "displayName": currentAgentId ? `${currentAgentId} (A2A Agent)` : "Sample A2A Agent",
-          "description": "This agent is A2A compatible.",
-          "endpoint": "https://example-a2a-agent.com/invoke",
-          "publicKey": "WILL_BE_GENERATED_BY_SERVER_UPON_REGISTRATION",
-          "capabilities": [
-            { "name": agentCapability || "SampleCapability", "description": "Description of sample capability." }
+          "version": "1.0.0", // A2A AgentCard schema version
+          "name": currentAgentId || "MyA2AAgent",
+          "description": `An A2A agent for ${currentAgentCapability || 'general tasks'}.`,
+          "url": "https://example-a2a-agent.com/invoke", // This is the actual A2A endpoint
+          "skills": [
+            {
+              "id": currentAgentCapability || "performTask",
+              "name": currentAgentCapability || "Perform Task",
+              "description": `Handles ${currentAgentCapability || 'a general task'}.`,
+              "tags": [currentAgentCapability || "generic"]
+            }
           ],
-          "supportedActions": ["invokeSkill", "getCapabilities"]
+          "defaultInputModes": ["application/json"],
+          "defaultOutputModes": ["application/json"],
+          "capabilities": {
+            "streaming": true,
+            "pushNotifications": false,
+            "stateTransitionHistory": true
+          },
+          "securitySchemes": {
+            "bearerAuth": {
+              "type": "http",
+              "scheme": "bearer",
+              "description": "Bearer token authentication"
+            }
+          },
+          "security": [
+            { "bearerAuth": [] }
+          ],
+          "provider": {
+            "organization": provider || "DemoProvider",
+            "url": "https://demoprovider.com"
+          }
         },
         "customData": {
           "info": "Additional non-A2A specific extensions can go here."
@@ -84,25 +107,26 @@ export default function ANSAgentRegistryPage() {
   const resetForm = (isInitialLoad = false) => {
     const initialAgentID = isInitialLoad ? "textProcessor" : "TextProcessor" + Math.floor(Math.random()*100);
     const initialProtocol: ANSProtocol = "a2a";
+    const initialAgentCapability = "DocumentTranslation";
 
     setProtocol(initialProtocol);
     setAgentID(initialAgentID);
-    setAgentCapability("DocumentTranslation");
+    setAgentCapability(initialAgentCapability);
     setProvider("AcmeCorp");
     setVersion("1.0.0");
     setExtension("secure");
-    setProtocolExtensions(generateProtocolExtensionsJson(initialProtocol, initialAgentID));
+    setProtocolExtensions(generateProtocolExtensionsJson(initialProtocol, initialAgentID, initialAgentCapability));
   };
 
   useEffect(() => {
     resetForm(true);
-  }, []); // Removed dependencies to only run once on mount
+  }, []); 
 
 
   // Update protocolExtensions when protocol or agentID changes
   useEffect(() => {
-    setProtocolExtensions(generateProtocolExtensionsJson(protocol, agentID));
-  }, [protocol, agentID, agentCapability]); // agentCapability added as it's used in card
+    setProtocolExtensions(generateProtocolExtensionsJson(protocol, agentID, agentCapability));
+  }, [protocol, agentID, agentCapability, provider]);
 
 
   const handleRegisterAgent = async (e: FormEvent) => {
@@ -112,19 +136,24 @@ export default function ANSAgentRegistryPage() {
     let parsedProtocolExtensions;
     try {
       parsedProtocolExtensions = JSON.parse(protocolExtensions);
-      // Basic check for endpoint, A2A has it nested
+      
       let hasEndpoint = false;
+      let endpointFieldName = "'endpoint'";
       if (protocol === "a2a") {
-        if (parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.endpoint === 'string') {
+        endpointFieldName = "'a2aAgentCard.url'";
+        if (parsedProtocolExtensions.a2aAgentCard && 
+            typeof parsedProtocolExtensions.a2aAgentCard === 'object' &&
+            parsedProtocolExtensions.a2aAgentCard.url &&
+            typeof parsedProtocolExtensions.a2aAgentCard.url === 'string') {
           hasEndpoint = true;
         }
-      } else {
-        if (typeof parsedProtocolExtensions.endpoint === 'string') {
+      } else { // For 'mcp', 'acp', 'other'
+        if (parsedProtocolExtensions.endpoint && typeof parsedProtocolExtensions.endpoint === 'string') {
           hasEndpoint = true;
         }
       }
       if (!hasEndpoint) {
-         throw new Error(`Protocol Extensions JSON must contain a valid 'endpoint' string${protocol === "a2a" ? " within 'a2aAgentCard'" : ""}.`);
+         throw new Error(`Protocol Extensions JSON must contain a valid ${endpointFieldName} string property.`);
       }
 
     } catch (err:any) {
@@ -281,15 +310,14 @@ export default function ANSAgentRegistryPage() {
               <FormItem Icon={FileJson} label="Protocol Extensions (JSON)" htmlFor="protocolExtensions">
                 <Textarea 
                   id="protocolExtensions" 
-                  placeholder={protocol === "a2a" ? '{ "a2aAgentCard": { "endpoint": "...", ... }, ... }' : '{ "endpoint": "...", "customData": {} }'}
+                  placeholder={protocol === "a2a" ? '{ "a2aAgentCard": { "url": "...", ... }, ... }' : '{ "endpoint": "...", "customData": {} }'}
                   value={protocolExtensions} 
                   onChange={e => setProtocolExtensions(e.target.value)} 
                   required 
                   rows={10}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Must be valid JSON. Include an 'endpoint' key 
-                  {protocol === "a2a" && " within 'a2aAgentCard' object (e.g. a2aAgentCard.endpoint)"}.
+                  Must be valid JSON. Include {protocol === "a2a" ? "an 'a2aAgentCard.url' string (e.g., within a2aAgentCard object)" : "an 'endpoint' key (e.g. endpoint: 'https://...')"}.
                 </p>
               </FormItem>
             </CardContent>

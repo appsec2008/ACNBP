@@ -14,12 +14,29 @@ const registrationRequestSchema = z.object({
   provider: z.string().min(1, "Provider is required"),
   version: z.string().regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/, "Version must be a valid Semantic Version"),
   extension: z.string().optional(),
-  protocolExtensions: z.record(z.any()).refine(data => {
-    if (!data.endpoint || typeof data.endpoint !== 'string') {
-      return false;
+  protocolExtensions: z.record(z.any()) // Basic type, detailed validation moved to superRefine
+}).superRefine((data, ctx) => {
+  if (data.protocol === "a2a") {
+    if (!data.protocolExtensions.a2aAgentCard || 
+        typeof data.protocolExtensions.a2aAgentCard !== 'object' ||
+        data.protocolExtensions.a2aAgentCard === null || // Ensure a2aAgentCard is not null
+        !data.protocolExtensions.a2aAgentCard.url ||
+        typeof data.protocolExtensions.a2aAgentCard.url !== 'string') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["protocolExtensions"],
+        message: "For A2A protocol, protocolExtensions must contain an 'a2aAgentCard' object with a valid 'url' string property.",
+      });
     }
-    return true;
-  }, { message: "Protocol extensions must contain an 'endpoint' string." }),
+  } else { // For 'mcp', 'acp', 'other'
+    if (!data.protocolExtensions.endpoint || typeof data.protocolExtensions.endpoint !== 'string') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["protocolExtensions"],
+        message: "Protocol extensions must contain an 'endpoint' string property.",
+      });
+    }
+  }
 });
 
 function constructANSName(parts: ANSNameParts): string {
