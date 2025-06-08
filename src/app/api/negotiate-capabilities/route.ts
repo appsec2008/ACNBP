@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { evaluateOffers } from "@/ai/flows/evaluate-offers-flow";
 import type { EvaluateOffersInput, EvaluateOffersOutput, } from "@/ai/flows/evaluate-offers-flow";
-import type { AgentService, NegotiationResult, NegotiationRequestInput, NegotiationApiResponse, AgentRegistration } from "@/lib/types";
+import type { AgentService, NegotiationResult, NegotiationRequestInput, NegotiationApiResponse, AgentRegistration, Skill } from "@/lib/types";
 import { getDb } from '@/lib/db';
 
 function normalizeCapability(capability: string): string {
@@ -63,6 +63,16 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        let agentSkills: Skill[] | undefined = undefined;
+        if (agent.protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && Array.isArray(parsedProtocolExtensions.a2aAgentCard.skills)) {
+            agentSkills = parsedProtocolExtensions.a2aAgentCard.skills.map((s: any) => ({
+                id: s.id || "unknown-skill-id",
+                name: s.name || s.id || "Unknown Skill",
+                description: s.description,
+                tags: s.tags,
+            }));
+        }
+
 
         const currentService: AgentService = {
             id: agent.id,
@@ -73,6 +83,8 @@ export async function POST(request: NextRequest) {
             cost: agentCost,
             protocol: agent.protocol,
             ansEndpoint: agent.ansName,
+            skills: agentSkills, // Add extracted skills
+            protocolExtensions: parsedProtocolExtensions // Include full extensions for potential future use or detailed display
         };
         
         potentialServices.push(currentService);
@@ -80,8 +92,8 @@ export async function POST(request: NextRequest) {
 
 
     const normalizedDesiredCapability = desiredCapability ? normalizeCapability(desiredCapability) : "";
-    const isQoSIgnored = requiredQos <= 0.001;
-    const isCostIgnored = maxCost >= 999999;
+    const isQoSIgnored = requiredQos <= 0.001; // Consider 0 or very small as "ignore"
+    const isCostIgnored = maxCost >= 999999; // Consider very large as "ignore"
 
     potentialServices.forEach(service => {
       let serviceMatchStatus: NegotiationResult['matchStatus'] = 'failed'; 
@@ -103,45 +115,36 @@ export async function POST(request: NextRequest) {
                 messages.push(`Primary capability '${agentRecord.agentCapability}' matches desired '${desiredCapability}'.`);
             }
 
-            if (agentRecord.protocol === 'a2a') {
-                try {
-                    const pExt = JSON.parse(agentRecord.protocolExtensions as string);
-                    if (pExt.a2aAgentCard && Array.isArray(pExt.a2aAgentCard.skills) && pExt.a2aAgentCard.skills.length > 0) {
-                        messages.push(`A2A Agent: Evaluating ${pExt.a2aAgentCard.skills.length} skill(s) from AgentCard.`);
-                        for (const skill of pExt.a2aAgentCard.skills) {
-                            const skillIdNorm = skill.id ? normalizeCapability(skill.id) : "";
-                            const skillNameNorm = skill.name ? normalizeCapability(skill.name) : "";
+            if (service.protocol === 'a2a' && service.skills && service.skills.length > 0) {
+                messages.push(`A2A Agent: Evaluating ${service.skills.length} skill(s) from AgentCard.`);
+                for (const skill of service.skills) {
+                    const skillIdNorm = skill.id ? normalizeCapability(skill.id) : "";
+                    const skillNameNorm = skill.name ? normalizeCapability(skill.name) : "";
 
-                            if (skillIdNorm && (skillIdNorm.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(skillIdNorm))) {
-                                a2aSkillMatched = true;
-                                messages.push(`A2A skill ID '${skill.id}' in AgentCard matches desired '${desiredCapability}'.`);
-                                break; 
-                            }
-                            if (skillNameNorm && (skillNameNorm.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(skillNameNorm))) {
-                                a2aSkillMatched = true;
-                                messages.push(`A2A skill name '${skill.name}' in AgentCard matches desired '${desiredCapability}'.`);
-                                break;
-                            }
-                        }
-                        if (a2aSkillMatched) {
-                            capabilityMatched = true; 
-                        } else if (!primaryCapabilityMatched) { 
-                            messages.push(`A2A agent: None of the listed skills in 'a2aAgentCard.skills' matched '${desiredCapability}'.`);
-                        } else {
-                            messages.push(`A2A agent: Primary capability matched, but no specific A2A skills from AgentCard matched '${desiredCapability}'.`);
-                        }
-                    } else if (!primaryCapabilityMatched) { 
-                         messages.push(`A2A agent: 'a2aAgentCard.skills' not found, not an array, or empty. Cannot match specific A2A skills for '${desiredCapability}'.`);
-                    } else {
-                         messages.push(`A2A agent: 'a2aAgentCard.skills' not found or empty (primary capability already matched).`);
+                    if (skillIdNorm && (skillIdNorm.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(skillIdNorm))) {
+                        a2aSkillMatched = true;
+                        messages.push(`A2A skill ID '${skill.id}' (Name: '${skill.name}') in AgentCard matches desired '${desiredCapability}'.`);
+                        break; 
                     }
-                } catch (e) {
-                    if (!primaryCapabilityMatched) { 
-                        messages.push(`A2A agent: Error parsing protocolExtensions; specific A2A skills could not be verified for '${desiredCapability}'.`);
-                    } else { 
-                        messages.push(`A2A agent: Error parsing protocolExtensions for A2A skills (primary capability already matched).`);
+                    if (!a2aSkillMatched && skillNameNorm && (skillNameNorm.includes(normalizedDesiredCapability) || normalizedDesiredCapability.includes(skillNameNorm))) {
+                        a2aSkillMatched = true;
+                        messages.push(`A2A skill name '${skill.name}' (ID: '${skill.id}') in AgentCard matches desired '${desiredCapability}'.`);
+                        break;
                     }
                 }
+                if (a2aSkillMatched) {
+                    capabilityMatched = true; 
+                } else if (!primaryCapabilityMatched) { 
+                    messages.push(`A2A agent: None of the listed skills in AgentCard matched '${desiredCapability}'.`);
+                } else {
+                    // Primary matched, but no specific skills did. This is okay if primary is sufficient.
+                }
+            } else if (service.protocol === 'a2a' && (!service.skills || service.skills.length === 0)){
+                 if (!primaryCapabilityMatched) { 
+                     messages.push(`A2A agent: AgentCard skills not found or empty. Primary capability did not match '${desiredCapability}'.`);
+                 } else {
+                    // Primary matched, no specific skills needed or listed.
+                 }
             }
         
             if (!capabilityMatched) {
@@ -173,7 +176,7 @@ export async function POST(request: NextRequest) {
                 qosCheckResult = 'not_met';
             }
         } else {
-          messages.push("QoS requirement was not strictly specified by the user, or agent QoS unknown; QoS check skipped.");
+          messages.push("QoS requirement was not strictly specified by the user; QoS check passed or agent QoS unknown.");
         }
 
         let costCheckResult: 'met' | 'partially_met' | 'not_met' | 'ignored' = 'ignored';
@@ -192,7 +195,7 @@ export async function POST(request: NextRequest) {
                 costCheckResult = 'not_met';
             }
         } else {
-          messages.push("Maximum cost requirement was not strictly specified by the user, or agent cost unknown; cost check skipped.");
+          messages.push("Maximum cost requirement was not strictly specified by the user; cost check passed or agent cost unknown.");
         }
         
         if (qosCheckResult === 'not_met' || costCheckResult === 'not_met') {
@@ -270,13 +273,31 @@ export async function POST(request: NextRequest) {
 
     if (finalFilteredResults.length === 0 && registeredAgentRows.length > 0) {
          finalFilteredResults.push({ 
-            service: {id: "system-no-match", name: "System Message", capability: "N/A", description: "No registered agents matched the specified criteria.", qos:0, cost:0, protocol: "N/A", ansEndpoint: "N/A"},
+            service: {
+                id: "system-no-match", 
+                name: "System Message", 
+                capability: "N/A", 
+                description: "No registered agents matched the specified criteria.", 
+                qos:undefined, 
+                cost:undefined, 
+                protocol: "N/A", 
+                ansEndpoint: "N/A"
+            },
             matchStatus: 'failed', 
             matchMessage: "No agents found matching the desired capability and other specified criteria after filtering from registered agents."
         });
     } else if (registeredAgentRows.length === 0) {
          finalFilteredResults.push({
-            service: {id: "system-no-agents", name: "System Message", capability: "N/A", description: "No agents are currently registered in the ANS.", qos:0, cost:0, protocol: "N/A", ansEndpoint: "N/A"},
+            service: {
+                id: "system-no-agents", 
+                name: "System Message", 
+                capability: "N/A", 
+                description: "No agents are currently registered in the ANS.", 
+                qos:undefined, 
+                cost:undefined, 
+                protocol: "N/A", 
+                ansEndpoint: "N/A"
+            },
             matchStatus: 'failed',
             matchMessage: "No agents available in the ANS registry to evaluate."
         });

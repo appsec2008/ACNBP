@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { BotMessageSquare, Send, CheckCircle, XCircle, Search, ShieldQuestion, Star, FileText, Loader2, AlertTriangle, Share2 } from "lucide-react";
+import { BotMessageSquare, Send, CheckCircle, XCircle, Search, ShieldQuestion, Star, FileText, Loader2, AlertTriangle, Share2, PackageCheck, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import type { NegotiationResult, NegotiationRequestInput, NegotiationApiResponse } from "@/lib/types";
+import type { NegotiationResult, NegotiationRequestInput, NegotiationApiResponse, AgentService, Skill } from "@/lib/types";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function CapabilityNegotiationPage() {
   const [desiredCapability, setDesiredCapability] = useState("");
@@ -53,8 +59,12 @@ export default function CapabilityNegotiationPage() {
       
       const sortedResults = data.results.sort((a, b) => {
         const statusOrder = { 'success': 1, 'partial': 2, 'failed': 3, 'capability_mismatch': 4 };
-        if (a.matchStatus !== b.matchStatus) {
-          return statusOrder[a.matchStatus] - statusOrder[b.matchStatus];
+        // Ensure a.service and b.service exist before accessing matchStatus
+        const aStatus = a.service ? statusOrder[a.matchStatus] : statusOrder['failed'];
+        const bStatus = b.service ? statusOrder[b.matchStatus] : statusOrder['failed'];
+
+        if (aStatus !== bStatus) {
+          return aStatus - bStatus;
         }
         if (a.aiScore !== undefined && b.aiScore !== undefined) {
           return b.aiScore - a.aiScore;
@@ -91,7 +101,16 @@ export default function CapabilityNegotiationPage() {
         variant: "destructive",
       });
        setNegotiationResults([{
-            service: {id: "system-error", name: "System Error", capability: "N/A", description: "N/A", qos:undefined, cost:undefined, protocol: "N/A", ansEndpoint: "N/A"},
+            service: {
+                id: "system-error", 
+                name: "System Error", 
+                capability: "N/A", 
+                description: "N/A", 
+                qos:undefined, 
+                cost:undefined, 
+                protocol: "N/A", 
+                ansEndpoint: "N/A"
+            },
             matchStatus: 'failed',
             matchMessage: `Negotiation process failed: ${error.message || "Unknown error"}`
         }]);
@@ -169,7 +188,7 @@ export default function CapabilityNegotiationPage() {
             <CardTitle>Negotiation Outcomes</CardTitle>
             <CardDescription>Results of the negotiation process with available agents.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 max-h-[700px] overflow-y-auto">
+          <CardContent className="space-y-4 max-h-[calc(100vh-220px)] overflow-y-auto pr-2">
             {negotiationResults.length === 0 && !isLoading && (
               <p className="text-muted-foreground text-center py-8">Enter criteria and initiate negotiation to see outcomes.</p>
             )}
@@ -183,8 +202,16 @@ export default function CapabilityNegotiationPage() {
               const service = result.service;
               const isSystemMessage = service && (service.id === "system-error" || service.id === "system-no-match" || service.id === "system-no-agents" || service.name === "System Message");
 
+              if (!service) { // Defensive check
+                return (
+                    <Card key={`error-${index}`} className="p-4 bg-destructive/10">
+                        <p className="text-destructive">Error: Service data missing for a negotiation result.</p>
+                    </Card>
+                );
+              }
+
               return (
-                <Card key={service?.id || index} className="p-4 bg-card/50">
+                <Card key={service.id || index} className="p-4 bg-card/50 shadow-md">
                   <div className="flex items-start space-x-3">
                     {result.matchStatus === 'success' && <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />}
                     {result.matchStatus === 'partial' && <Search className="h-5 w-5 text-yellow-500 mt-1 flex-shrink-0" />}
@@ -192,8 +219,8 @@ export default function CapabilityNegotiationPage() {
                     {isSystemMessage && <AlertTriangle className="h-5 w-5 text-destructive mt-1 flex-shrink-0" />}
                     
                     <div className="flex-grow">
-                      <CardTitle className="text-lg mb-1">{service?.name || 'System Message'}</CardTitle>
-                      {service && !isSystemMessage && (
+                      <CardTitle className="text-lg mb-1">{service.name || 'System Message'}</CardTitle>
+                      {!isSystemMessage && (
                           <>
                               <p className="text-sm text-muted-foreground">Offered Capability: <Badge variant="secondary">{service.capability}</Badge></p>
                                <p className="text-xs text-muted-foreground mt-0.5">{service.description || 'N/A'}</p>
@@ -211,17 +238,40 @@ export default function CapabilityNegotiationPage() {
                           </>
                       )}
                       <p className={`text-sm mt-2 font-medium ${
-                          result.matchStatus === 'success' ? 'text-green-700' :
-                          result.matchStatus === 'partial' ? 'text-yellow-700' :
+                          result.matchStatus === 'success' ? 'text-green-700 dark:text-green-400' :
+                          result.matchStatus === 'partial' ? 'text-yellow-700 dark:text-yellow-400' :
                           (isSystemMessage || result.matchStatus === 'failed' || result.matchStatus === 'capability_mismatch') ? 'text-destructive' :
-                          'text-red-700'
+                          'text-red-700 dark:text-red-400' // Should not be reached if previous conditions are exhaustive
                       }`}>{result.matchMessage}</p>
+
+                      {service.protocol === 'a2a' && service.skills && service.skills.length > 0 && (
+                        <Accordion type="single" collapsible className="w-full mt-3">
+                          <AccordionItem value="a2a-skills" className="border-t border-b-0 pt-2">
+                            <AccordionTrigger className="text-sm font-medium hover:no-underline py-2 text-primary hover:text-primary/80">
+                                <PackageCheck className="mr-2 h-4 w-4" /> A2A Agent Skills ({service.skills.length})
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-1 pb-2 pl-2 pr-1 bg-muted/30 rounded-md">
+                                {service.skills.map(skill => (
+                                    <div key={skill.id} className="py-1.5 border-b border-muted last:border-b-0">
+                                        <p className="text-xs font-semibold">{skill.name}</p>
+                                        {skill.description && <p className="text-xs text-muted-foreground mt-0.5">{skill.description}</p>}
+                                        {skill.tags && skill.tags.length > 0 && (
+                                          <div className="mt-1 flex flex-wrap gap-1">
+                                            {skill.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0.5">{tag}</Badge>)}
+                                          </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      )}
 
                       {result.aiScore !== undefined && result.aiReasoning && (
                         <Card className="mt-3 p-3 bg-background shadow-sm border-dashed">
                           <div className="flex items-center mb-1">
                             <ShieldQuestion className="h-5 w-5 text-primary mr-2" />
-                            <p className="text-sm font-semibold text-primary">AI Evaluation:</p>
+                            <p className="text-sm font-semibold text-primary">AI Evaluation (Security & Other Factors):</p>
                           </div>
                           <div className="flex items-center gap-2 mb-1">
                               <Badge className={result.aiScore > 70 ? "bg-accent text-accent-foreground" : result.aiScore > 40 ? "bg-yellow-400 text-yellow-900" : "bg-destructive text-destructive-foreground"}>
@@ -229,7 +279,7 @@ export default function CapabilityNegotiationPage() {
                               </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground flex items-start">
-                            <FileText className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
+                            <ScrollText className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
                             <span><span className="font-medium">Reasoning:</span> {result.aiReasoning}</span>
                           </p>
                         </Card>
@@ -245,3 +295,4 @@ export default function CapabilityNegotiationPage() {
     </>
   );
 }
+

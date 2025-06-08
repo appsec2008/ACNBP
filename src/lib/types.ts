@@ -1,4 +1,13 @@
 
+
+// Basic Skill definition, aligning with common fields in an A2A AgentCard skill
+export interface Skill {
+  id: string;
+  name: string;
+  description?: string;
+  tags?: string[];
+}
+
 // Describes a service listed in the system, used by the negotiation API and frontend.
 // This interface defines the schema for an "AgentService" object.
 export interface AgentService {
@@ -10,6 +19,8 @@ export interface AgentService {
   cost?: number; // Cost of using the service - Optional
   protocol: string; // Communication protocol supported (e.g., "ACNBP-Vision/1.0")
   ansEndpoint: string; // Agent Name Service endpoint (e.g., "a2a://ImagePro.ImageRecognition.VisionCorp.v1.2.0.gpu-optimized")
+  skills?: Skill[]; // Optional: For A2A agents, lists skills from their AgentCard
+  protocolExtensions?: { [key: string]: any }; // Optional: Full protocol extensions for context
 }
 
 // Result item for capability negotiation, returned by API to client.
@@ -126,3 +137,4 @@ export interface EvaluatedOfferFromAI {
   score: number;
   reasoning: string;
 }
+
