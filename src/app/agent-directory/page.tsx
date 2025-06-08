@@ -54,19 +54,55 @@ export default function ANSAgentRegistryPage() {
     fetchAgents();
   }, []);
 
+  const generateProtocolExtensionsJson = (currentProtocol: ANSProtocol | "", currentAgentId: string): string => {
+    if (currentProtocol === "a2a") {
+      return JSON.stringify({
+        "a2aAgentCard": {
+          "agentCardVersion": "1.0",
+          "agentId": currentAgentId || "placeholder-agent-id",
+          "displayName": currentAgentId ? `${currentAgentId} (A2A Agent)` : "Sample A2A Agent",
+          "description": "This agent is A2A compatible.",
+          "endpoint": "https://example-a2a-agent.com/invoke",
+          "publicKey": "WILL_BE_GENERATED_BY_SERVER_UPON_REGISTRATION",
+          "capabilities": [
+            { "name": agentCapability || "SampleCapability", "description": "Description of sample capability." }
+          ],
+          "supportedActions": ["invokeSkill", "getCapabilities"]
+        },
+        "customData": {
+          "info": "Additional non-A2A specific extensions can go here."
+        }
+      }, null, 2);
+    }
+    // Default for other protocols or if protocol is empty
+    return JSON.stringify({
+      "endpoint": "https://some-generic-agent.com/api",
+      "customData": {}
+    }, null, 2);
+  };
+
   const resetForm = (isInitialLoad = false) => {
-    setProtocol("a2a");
-    setAgentID(isInitialLoad ? "textProcessor" : "TextProcessor" + Math.floor(Math.random()*100));
+    const initialAgentID = isInitialLoad ? "textProcessor" : "TextProcessor" + Math.floor(Math.random()*100);
+    const initialProtocol: ANSProtocol = "a2a";
+
+    setProtocol(initialProtocol);
+    setAgentID(initialAgentID);
     setAgentCapability("DocumentTranslation");
     setProvider("AcmeCorp");
     setVersion("1.0.0");
     setExtension("secure");
-    setProtocolExtensions(JSON.stringify({ "endpoint": "https://acme.example.com/api/translate", "customData": {} }, null, 2));
+    setProtocolExtensions(generateProtocolExtensionsJson(initialProtocol, initialAgentID));
   };
 
   useEffect(() => {
-    resetForm(true); 
-  }, []);
+    resetForm(true);
+  }, []); // Removed dependencies to only run once on mount
+
+
+  // Update protocolExtensions when protocol or agentID changes
+  useEffect(() => {
+    setProtocolExtensions(generateProtocolExtensionsJson(protocol, agentID));
+  }, [protocol, agentID, agentCapability]); // agentCapability added as it's used in card
 
 
   const handleRegisterAgent = async (e: FormEvent) => {
@@ -76,11 +112,23 @@ export default function ANSAgentRegistryPage() {
     let parsedProtocolExtensions;
     try {
       parsedProtocolExtensions = JSON.parse(protocolExtensions);
-      if (!parsedProtocolExtensions.endpoint || typeof parsedProtocolExtensions.endpoint !== 'string') {
-        throw new Error("Protocol Extensions JSON must contain a valid 'endpoint' string.");
+      // Basic check for endpoint, A2A has it nested
+      let hasEndpoint = false;
+      if (protocol === "a2a") {
+        if (parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.endpoint === 'string') {
+          hasEndpoint = true;
+        }
+      } else {
+        if (typeof parsedProtocolExtensions.endpoint === 'string') {
+          hasEndpoint = true;
+        }
       }
+      if (!hasEndpoint) {
+         throw new Error(`Protocol Extensions JSON must contain a valid 'endpoint' string${protocol === "a2a" ? " within 'a2aAgentCard'" : ""}.`);
+      }
+
     } catch (err:any) {
-      toast({ title: "Registration Failed", description: err.message || "Protocol Extensions must be valid JSON and include an 'endpoint'.", variant: "destructive" });
+      toast({ title: "Registration Failed", description: err.message || "Protocol Extensions must be valid JSON.", variant: "destructive" });
       setIsLoading(prev => ({...prev, form: false}));
       return;
     }
@@ -105,31 +153,18 @@ export default function ANSAgentRegistryPage() {
       const responseData = await response.json();
 
       if (!response.ok) {
-        // Attempt to parse error details if they are JSON, otherwise use the error string
         let errorMessage = responseData.error || "Failed to register agent.";
         if (responseData.details) {
             try {
-                // Assuming details might be a Zod-formatted error object
-                if (typeof responseData.details === 'object' && responseData.details !== null) {
-                    const formattedDetails = Object.entries(responseData.details as Record<string, any>)
-                        .map(([field, fieldError]) => {
-                            if (fieldError && Array.isArray((fieldError as any)._errors) && (fieldError as any)._errors.length > 0) {
-                                return `${field}: ${(fieldError as any)._errors.join(', ')}`;
-                            }
-                            return null;
-                        })
-                        .filter(Boolean)
-                        .join('; ');
-                    if (formattedDetails) {
-                        errorMessage = `${errorMessage} Details: ${formattedDetails}`;
-                    } else {
-                         errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
-                    }
+                const fieldErrors = responseData.details._errors ? [] : Object.values(responseData.details).flatMap((field: any) => field._errors);
+                if (fieldErrors.length > 0) {
+                    errorMessage = `${errorMessage} Details: ${fieldErrors.join('; ')}`;
+                } else if (responseData.details._errors && responseData.details._errors.length > 0) {
+                    errorMessage = `${errorMessage} Details: ${responseData.details._errors.join('; ')}`;
                 } else {
-                    errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
+                     errorMessage = `${errorMessage} Details: ${JSON.stringify(responseData.details)}`;
                 }
             } catch (e) {
-                 // If details parsing fails, just append raw string
                 errorMessage = `${errorMessage} Details: ${String(responseData.details)}`;
             }
         }
@@ -144,8 +179,8 @@ export default function ANSAgentRegistryPage() {
          title: "Registration Failed",
          description: error.message || "An unexpected error occurred.",
          variant: "destructive",
-         duration: 10000, // Increased duration for potentially longer error messages
-         className: "max-w-md whitespace-pre-wrap" // Allow pre-wrap for better formatting of long messages
+         duration: 10000, 
+         className: "max-w-md whitespace-pre-wrap"
        });
     } finally {
       setIsLoading(prev => ({...prev, form: false}));
@@ -163,7 +198,7 @@ export default function ANSAgentRegistryPage() {
       const responseData = await response.json();
       if (!response.ok) throw new Error(responseData.error || "Failed to renew agent.");
       toast({ title: "Agent Renewed", description: `${ansName} has been successfully renewed.` });
-      fetchAgents(); // Refresh list
+      fetchAgents(); 
     } catch (error: any) {
       toast({ title: "Renewal Failed", description: error.message, variant: "destructive" });
     } finally {
@@ -182,7 +217,7 @@ export default function ANSAgentRegistryPage() {
       const responseData = await response.json();
       if (!response.ok) throw new Error(responseData.error || "Failed to revoke agent.");
       toast({ title: "Agent Revoked", description: `${ansName} has been successfully revoked.` });
-      fetchAgents(); // Refresh list
+      fetchAgents(); 
     } catch (error: any) {
       toast({ title: "Revocation Failed", description: error.message, variant: "destructive" });
     } finally {
@@ -244,8 +279,18 @@ export default function ANSAgentRegistryPage() {
                 </FormItem>
               </div>
               <FormItem Icon={FileJson} label="Protocol Extensions (JSON)" htmlFor="protocolExtensions">
-                <Textarea id="protocolExtensions" placeholder='{ "endpoint": "https://...", "customData": {} }' value={protocolExtensions} onChange={e => setProtocolExtensions(e.target.value)} required rows={5}/>
-                <p className="text-xs text-muted-foreground mt-1">Must be valid JSON. Include an 'endpoint' key for resolution.</p>
+                <Textarea 
+                  id="protocolExtensions" 
+                  placeholder={protocol === "a2a" ? '{ "a2aAgentCard": { "endpoint": "...", ... }, ... }' : '{ "endpoint": "...", "customData": {} }'}
+                  value={protocolExtensions} 
+                  onChange={e => setProtocolExtensions(e.target.value)} 
+                  required 
+                  rows={10}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Must be valid JSON. Include an 'endpoint' key 
+                  {protocol === "a2a" && " within 'a2aAgentCard' object (e.g. a2aAgentCard.endpoint)"}.
+                </p>
               </FormItem>
             </CardContent>
             <CardFooter>
@@ -383,3 +428,6 @@ const FormItem = ({Icon, label, htmlFor, children}: {Icon?: React.ElementType, l
     {children}
   </div>
 )
+
+
+    
