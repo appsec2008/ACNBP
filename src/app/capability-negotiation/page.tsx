@@ -298,27 +298,31 @@ export default function CapabilityNegotiationPage() {
                           'text-red-700 dark:text-red-400' 
                       }`}>{result.matchMessage}</p>
 
-                      {service.protocol === 'a2a' && service.skills && service.skills.length > 0 && (
+                      {service.protocol === 'a2a' && (
                         <Accordion type="single" collapsible className="w-full mt-3">
-                          <AccordionItem value="a2a-skills" className="border-t pt-2">
+                          <AccordionItem value="a2a-agent-card-details" className="border-t pt-2">
                              <AccordionTrigger className="text-sm font-medium hover:no-underline py-2 text-primary hover:text-primary/80">
-                                <PackageCheck className="mr-2 h-4 w-4" /> Google A2A Agent Card Skills ({service.skills.length})
+                                <PackageCheck className="mr-2 h-4 w-4" /> Google A2A Agent Card Details
                             </AccordionTrigger>
                             <AccordionContent className="pt-1 pb-2 pl-2 pr-1 bg-muted/30 rounded-md">
-                                {service.skills.map(skill => (
-                                    <div key={skill.id} className="py-1.5 border-b border-muted last:border-b-0">
-                                        <p className="text-xs font-semibold">{skill.name || skill.id || 'Unnamed Skill'}</p>
-                                        {skill.description && <p className="text-xs text-muted-foreground mt-0.5">{skill.description}</p>}
-                                        {skill.tags && skill.tags.length > 0 && (
-                                          <div className="mt-1 flex flex-wrap gap-1">
-                                            {skill.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0.5">{tag}</Badge>)}
-                                          </div>
-                                        )}
-                                    </div>
-                                ))}
+                                {service.skills && service.skills.length > 0 ? (
+                                    service.skills.map(skill => (
+                                        <div key={skill.id} className="py-1.5 border-b border-muted last:border-b-0">
+                                            <p className="text-xs font-semibold">{skill.name || skill.id || 'Unnamed Skill'}</p>
+                                            {skill.description && <p className="text-xs text-muted-foreground mt-0.5">{skill.description}</p>}
+                                            {skill.tags && skill.tags.length > 0 && (
+                                            <div className="mt-1 flex flex-wrap gap-1">
+                                                {skill.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0.5">{tag}</Badge>)}
+                                            </div>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-xs text-muted-foreground py-1.5">No specific skills listed in Agent Card, or card not fully parsed.</p>
+                                )}
                                 <AccordionItem value="a2a-agent-card-example" className="border-t border-b-0 pt-2 mt-2">
                                   <AccordionTrigger className="text-xs font-medium hover:no-underline py-1.5 text-muted-foreground hover:text-muted-foreground/80">
-                                    <FileJson className="mr-2 h-3 w-3" /> Example AgentCard JSON Structure
+                                    <FileJson className="mr-2 h-3 w-3" /> View Example AgentCard JSON Structure
                                   </AccordionTrigger>
                                   <AccordionContent className="pt-1 pb-1 pl-1 pr-0.5 bg-muted/20 rounded-md">
                                     <ScrollArea className="h-40"> 
@@ -361,3 +365,4 @@ export default function CapabilityNegotiationPage() {
     </>
   );
 }
+
