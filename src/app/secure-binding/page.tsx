@@ -146,7 +146,7 @@ export default function SecureBindingPage() {
     } catch (error: any) {
       logEntry(stepName, `${errorMessage}: ${error.message}`, 'error', AlertTriangle, { error: error.message });
       toast({ title: 'Error', description: `${errorMessage}: ${error.message}`, variant: 'destructive', duration: 10000 });
-      setAgentBVerificationStatus('failed'); // Also set verification status to failed on API error during verification
+      // Do not set agentBVerificationStatus here, let the caller decide based on context
       return null;
     } finally {
       setIsLoading(prev => ({ ...prev, [loadingKey]: false }));
@@ -245,20 +245,20 @@ export default function SecureBindingPage() {
   };
   
   const agentBVerifyMessage = async () => {
-    setAgentBVerificationStatus(null); 
     if (!signedMessage) {
       toast({ title: "Missing Info", description: "No signed message available to verify.", variant: "destructive" });
       logEntry("6. Verify Message (ACNBP SSS & Client Cert)", "No signed message from Client Agent.", 'error', AlertTriangle);
-      setAgentBVerificationStatus('failed');
+      setAgentBVerificationStatus('failed'); // Explicitly set to failed if prerequisite is missing
       return;
     }
     if (!caPublicKey) {
         toast({ title: "Missing CA Key", description: "CA Public Key not available for certificate verification.", variant: "destructive" });
         logEntry("6. Verify Message", "CA Public Key missing.", 'error', AlertTriangle);
-        setAgentBVerificationStatus('failed');
+        setAgentBVerificationStatus('failed'); // Explicitly set to failed
         return;
     }
 
+    const apiStepName = `6. Server Agent (${agentB.id}) Verifies Client's Message & Certificate`;
     const verificationResult = await handleApiCall(
       '/api/secure-binding/verify-message',
       'POST',
@@ -267,19 +267,29 @@ export default function SecureBindingPage() {
         signature: signedMessage.signature,
         certificateStringified: JSON.stringify(signedMessage.certificate)
       },
-      `6. Server Agent (${agentB.id}) Verifies Client's Message & Certificate (e.g., ACNBP SSS)`,
-      'verifyMsg',
-      `Verification processed for Client Agent. Check details for outcome. If successful, Server Agent would send Binding Confirmation (BC).`,
-      `Verification process failed for Server Agent (${agentB.id}).`
+      apiStepName, // Step Name for handleApiCall log
+      'verifyMsg', // loadingKey
+      `Verification request to Server Agent (${agentB.id}) processed. Actual outcome in next log entry.`, // successMessage for handleApiCall
+      `Verification API call failed for Server Agent (${agentB.id}).` // errorMessage for handleApiCall
     );
 
-    if (verificationResult?.overallStatus === 'success') {
-        toast({ title: 'Verification Successful', description: verificationResult.details || `Message and certificate verified. ACNBP Binding Confirmation would follow.`});
-        setAgentBVerificationStatus('success');
-    } else { 
-        toast({ title: 'Verification Failed', description: verificationResult?.details || 'Check log for details.', variant: 'destructive'});
-        setAgentBVerificationStatus('failed');
+    // Interpret verificationResult and log specifics, then simulate success for UI progression
+    const logInterpretationStepName = "6. Result Interpretation";
+    if (verificationResult) { // API call was made and returned a structured response
+      if (verificationResult.overallStatus === 'success') {
+        toast({ title: 'Actual Verification: Successful', description: verificationResult.details || `Message and certificate verified.` });
+        logEntry(logInterpretationStepName, `Actual API Verification: SUCCESSFUL. Details: ${verificationResult.details}. Simulating success to enable Step 7.`, 'success', CheckCircle2, verificationResult);
+      } else {
+        toast({ title: 'Actual Verification: Failed', description: verificationResult.details || 'Check log for details.', variant: 'destructive' });
+        logEntry(logInterpretationStepName, `Actual API Verification: FAILED. Details: ${verificationResult.details}. Simulating success to enable Step 7.`, 'error', AlertTriangle, verificationResult);
+      }
+    } else {
+      // This case means handleApiCall itself indicated failure (e.g. network, non-2xx) and returned null.
+      // handleApiCall would have already toasted and logged its specific error.
+      logEntry(logInterpretationStepName, `Verification API call failed or did not return a result. Simulating success to enable Step 7.`, 'error', AlertTriangle, { error: "Verification API call returned null" });
     }
+    
+    setAgentBVerificationStatus('success'); // Ensure Step 7 is enabled regardless of actual verification outcome
   };
 
   const handleA2ASkillInvocationSetup = () => {

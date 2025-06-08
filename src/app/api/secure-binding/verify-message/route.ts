@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getCACryptoKeys } from '../ca/route'; // Adjust path
+import { getOrInitializeCACryptoKeys } from '../ca/route'; // Corrected import
 
 interface CertificatePayload {
   subjectAgentId: string;
@@ -23,9 +23,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Message, signature, and stringified certificate are required' }, { status: 400 });
     }
 
-    const caCryptoKeys = getCACryptoKeys();
-    if (!caCryptoKeys) {
-      return NextResponse.json({ error: 'CA not initialized. Cannot verify certificate.' }, { status: 500 });
+    const caCryptoKeys = getOrInitializeCACryptoKeys(); // Corrected function call
+    if (!caCryptoKeys || !caCryptoKeys.publicKey) { // Added a check for publicKey as well
+      return NextResponse.json({ error: 'CA not initialized or public key missing. Cannot verify certificate.' }, { status: 500 });
     }
 
     let certificate: SignedCertificate;
@@ -106,15 +106,24 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Error verifying message:', error);
     // Try to return parsedCertificateInfo even in case of other errors if it was parsed
-    const certInfoForError = certificateStringified ? (()=>{try{return JSON.parse(certificateStringified);}catch{return null}})() : null;
+    let certInfoForErrorDisplay = null;
+    if (certificateStringified) {
+        try {
+            const parsedForError = JSON.parse(certificateStringified);
+            certInfoForErrorDisplay = {
+                subjectAgentId: parsedForError.subjectAgentId,
+                subjectAnsEndpoint: parsedForError.subjectAnsEndpoint,
+                issuer: parsedForError.issuer,
+            };
+        } catch { 
+            // If parsing fails here, certInfoForErrorDisplay remains null
+        }
+    }
+
     return NextResponse.json({
         error: 'Failed to verify message', 
         details: error.message,
-        verifiedCertificateInfo: certInfoForError ? {
-            subjectAgentId: certInfoForError.subjectAgentId,
-            subjectAnsEndpoint: certInfoForError.subjectAnsEndpoint,
-            issuer: certInfoForError.issuer,
-        } : null,
+        verifiedCertificateInfo: certInfoForErrorDisplay,
         certificateValid: false,
         messageSignatureValid: false,
         overallStatus: 'failed',
