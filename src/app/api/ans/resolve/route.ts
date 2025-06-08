@@ -89,15 +89,16 @@ export async function POST(request: NextRequest) {
     if (parsedProtocolExtensions && typeof parsedProtocolExtensions === 'object') {
       if (protocol === 'mcp' && typeof parsedProtocolExtensions.mcpEndpoint === 'string') {
           endpoint = parsedProtocolExtensions.mcpEndpoint;
-      } else if (protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.endpoint === 'string') {
-          endpoint = parsedProtocolExtensions.a2aAgentCard.endpoint;
+      } else if (protocol === 'a2a' && parsedProtocolExtensions.a2aAgentCard && typeof parsedProtocolExtensions.a2aAgentCard.url === 'string') {
+          endpoint = parsedProtocolExtensions.a2aAgentCard.url; // Corrected to use .url for A2A
       } else if (typeof parsedProtocolExtensions.endpoint === 'string') {
+          // Fallback for other protocols or generic endpoint definition
           endpoint = parsedProtocolExtensions.endpoint;
       }
     }
 
     if (!endpoint) {
-      return NextResponse.json({ error: `Endpoint not found or invalid in protocolExtensions for ANSName '${ansName}'. Ensure 'endpoint' (or protocol-specific e.g. 'mcpEndpoint') is defined.` }, { status: 404 });
+      return NextResponse.json({ error: `Endpoint not found or invalid in protocolExtensions for ANSName '${ansName}'. Ensure 'endpoint' (or protocol-specific e.g., 'a2aAgentCard.url' for A2A) is defined.` }, { status: 404 });
     }
 
     const responsePayload: ANSCapabilityResponse = {
