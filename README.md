@@ -1,7 +1,7 @@
 
 # Agent Capability Negotiation and Binding Protocol (ACNBP) Platform
 
-**Author:** Ken Huang,  Vineeth Sai Narajala, Idan Habler, Akram Sheriff
+**Author:** Ken Huang, Vineeth Sai Narajala, Idan Habler, Akram Sheriff
 
 ## Project Introduction
 
@@ -14,6 +14,97 @@ This Next.js web application is designed to demonstrate and explore the core con
 *   **Post-Binding Interaction (Conceptual):** The "Secure Binding" page also illustrates (in Step 7) how, once an ACNBP binding is established, agents can then use various communication protocols (e.g., Google's A2A, MCP) for actual skill execution. These protocols and their details would have been communicated via `protocolExtension` fields during the ACNBP negotiation.
 
 The platform aims to provide a tangible way to understand the dynamics of ACNBP-brokered agent interactions and the role of supporting services like ANS.
+
+## Key Protocol Flows Illustrated
+
+The following diagrams illustrate the core interactions simulated by this platform.
+
+### Figure 1: ANS Agent Registration and Certificate Issuance
+
+This diagram shows how a Provider Agent (`a_prov`) registers with the ANS Agent Registry and receives a CA-issued certificate, making its metadata (like ANRI components) available.
+
+```mermaid
+sequenceDiagram
+    participant AgentA as Provider Agent (a_prov)
+    participant ANS_Reg as ANS Agent Registry
+    participant CA as Certificate Authority
+
+    AgentA->>ANS_Reg: 1. Register(AgentID, PubKey, ProtocolExt_Details, ...)
+    Note over AgentA, ANS_Reg: Agent provides its ID, public key, and protocol extension details (or URL to it).
+    ANS_Reg->>CA: 2. RequestCertificate(AgentID, PubKey, ANSName)
+    Note over ANS_Reg, CA: ANS_Reg constructs ANSName and requests CA to issue a certificate binding these.
+    CA-->>ANS_Reg: 3. IssueCertificate(SignedCert for AgentA)
+    Note over CA, ANS_Reg: CA issues a certificate containing AgentID, PubKey, and ANSName, signed by CA.
+    ANS_Reg-->>AgentA: 4. RegistrationConfirm(ANSName, SignedCert_URL/Details)
+    Note over ANS_Reg: ANS Registry stores Agent Registration Data:<br/>- ANRI components (ANSName, URLs to ProtocolExt summaries/full, CertRef)<br/>- Full ProtocolExtension content<br/>- Agent's Certificate details/URL
+```
+
+### Figure 2: ANS Name Resolution
+
+This diagram illustrates how a Requester Agent (`a_req`) can resolve an ANSName to get detailed information about a Provider Agent, which is crucial for ACNBP.
+
+```mermaid
+sequenceDiagram
+    participant UserAgent as Requester Agent (a_req)
+    participant ANS_Res as ANS Resolution Service
+
+    UserAgent->>ANS_Res: 1. Resolve(ANSName_of_a_prov)
+    Note over UserAgent, ANS_Res: a_req knows the ANSName of a provider (e.g., from ANRI list during CPS).
+    ANS_Res-->>UserAgent: 2. ResolutionResponse(Endpoint, AgentCert, ProtocolExt_Content)
+    Note over ANS_Res, UserAgent: ANS returns the provider's invocation endpoint (derived from ProtocolExt),<br/>its CA-issued certificate, and its full ProtocolExtension content.
+```
+
+### Figure 3: ACNBP Core Negotiation Flow (SSR, SSO, SSE)
+
+This diagram shows the central negotiation messages of ACNBP between a Requester Agent (`a_req`) and a Provider Agent Candidate (`a_prov_candidate`).
+
+```mermaid
+sequenceDiagram
+    participant a_req as Requester Agent (a_req)
+    participant a_prov_cand as Provider Candidate (a_prov_candidate)
+    participant AI_Eval as AI Evaluation Service (Optional)
+
+    Note over a_req, a_prov_cand: Discovery via ANS (ANRI list) & Candidate Pre-Screening (CPS) happens before this.
+
+    a_req->>a_prov_cand: 1. Skill Set Request (SSR)<br/>(NegotiationContext, RequesterPE_Snapshot, RequesterCert)
+    Note over a_req, a_prov_cand: SSR is digitally signed by a_req using its CA-issued certificate.
+
+    a_prov_cand-->>a_req: 2. Skill Set Offer (SSO)<br/>(OfferedSkills, Costs, QoS, ProviderPE_Snapshot, ProviderCert)
+    Note over a_req, a_prov_cand: SSO is digitally signed by a_prov_candidate using its CA-issued certificate.
+
+    a_req->>AI_Eval: 3. EvaluateSSO(SSO, NegotiationContext) (Optional)
+    Note over a_req, AI_Eval: a_req may use an AI service for aspects of offer evaluation (e.g., security).
+    AI_Eval-->>a_req: 4. EvaluationResult (Score, Reasoning)
+
+    Note over a_req: Skill Set Evaluation (SSE) by a_req:<br/>- Verifies a_prov_candidate's signature on SSO using its certificate.<br/>- Assesses SSO against NegotiationContext (cost, QoS, skills).<br/>- Uses AI evaluation results if available.
+```
+
+### Figure 4: ACNBP Secure Binding Confirmation (SSA, BC) & Post-Binding Interaction Setup
+
+This diagram shows the final binding messages and the conceptual setup for post-binding communication, such as using Google's A2A protocol.
+
+```mermaid
+sequenceDiagram
+    participant a_req as Requester Agent (a_req)
+    participant a_prov_bound as Bound Provider (a_prov_bound)
+    participant ANS as Agent Name Service (for PE lookup)
+
+    Note over a_req, a_prov_bound: Selection of a_prov_bound based on SSE completed.
+
+    a_req->>a_prov_bound: 5. Skill Set Acceptance (SSA)<br/>(AcceptedOfferID, RequesterCert_Confirm, NC_Snapshot_Confirm)
+    Note over a_req, a_prov_bound: SSA is digitally signed by a_req using its certificate.
+
+    a_prov_bound-->>a_req: 6. Binding Confirmation (BC)<br/>(BindingID, ProviderCert_Confirm, PE_Snapshot_Confirm)
+    Note over a_req, a_prov_bound: BC is digitally signed by a_prov_bound using its certificate.
+
+    Note over a_req: Binding established.
+    Note over a_req, a_prov_bound: For Post-Binding Interaction (e.g., Google A2A protocol):
+    a_req->>ANS: 7a. Resolve(Provider_ANSName_from_Cert_in_BC)
+    Note over a_req, ANS: Client (a_req) uses ANSName from Provider's cert (sent in BC) to fetch its full PE.
+    ANS-->>a_req: 7b. Provider_ProtocolExtension (e.g., A2A AgentCard)
+    a_req->>a_prov_bound: 8. InvokeSkill (using ProviderPE details e.g., A2A URL & SkillID)
+    Note over a_req, a_prov_bound: Actual skill execution uses the protocol specified in PE (e.g., A2A call).
+```
 
 ## Important: Demo Status and Future Improvements
 
